@@ -117,51 +117,34 @@
     boardEl.innerHTML = html;
   }
 
-  async function fetchCSXData() {
-    renderTable(); // Render board immediately
-    const statusEl = document.getElementById('status-badge');
+async function fetchCSXData() {
+  renderTable(); // Render baseline board immediately
+  const statusEl = document.getElementById('status-badge');
 
-    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("OPTIONAL_PASTE")) {
-      statusEl.innerText = "Status: Displaying Active CSX Market Board";
-      return;
-    }
-
-    try {
-      statusEl.innerText = 'Connecting to CSX live feed...';
-      const res = await fetch(GOOGLE_SCRIPT_URL);
-      const rawHtml = await res.text();
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(rawHtml, 'text/html');
-      const rows = doc.querySelectorAll('table tbody tr');
-
-      let scrapedData = [];
-      rows.forEach(row => {
-        const cols = row.querySelectorAll('td');
-        if (cols.length >= 8) {
-          const ticker = cols[0].innerText.trim();
-          const price = cols[1].innerText.trim();
-          const change = cols[2].innerText.trim();
-          const open = cols[3].innerText.trim();
-          const high = cols[4].innerText.trim();
-          const low = cols[5].innerText.trim();
-          const volume = cols[6].innerText.trim();
-
-          if (ticker && ticker.length <= 5 && !ticker.includes('Stock')) {
-            scrapedData.push({ ticker, price, change, open, high, low, volume });
-          }
-        }
-      });
-
-      if (scrapedData.length > 0) {
-        liveMarketData = scrapedData;
-        renderTable();
-        statusEl.innerText = `Live Verified: ${new Date().toLocaleTimeString()}`;
-      }
-    } catch (err) {
-      statusEl.innerText = "Active Market Board (Fallback Enabled)";
-    }
+  if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("OPTIONAL_PASTE")) {
+    statusEl.innerText = "Status: Displaying Baseline CSX Market Board";
+    return;
   }
+
+  try {
+    statusEl.innerText = 'Fetching live CSX board...';
+    const res = await fetch(GOOGLE_SCRIPT_URL);
+    const result = await res.json();
+
+    if (result.status === "success" && result.data.length > 0) {
+      liveMarketData = result.data;
+      renderTable();
+      statusEl.innerText = `Live CSX Verified: ${new Date().toLocaleTimeString()}`;
+      statusEl.style.background = '#dcfce7';
+      statusEl.style.color = '#15803d';
+    } else {
+      statusEl.innerText = "Market Board Active (Using Cached Board)";
+    }
+  } catch (err) {
+    console.error("Fetch Error:", err);
+    statusEl.innerText = "Connection Error (Fallback Enabled)";
+  }
+}
 
   function saveApiKey() {
     localStorage.setItem('gemini_key', document.getElementById('api-key').value);

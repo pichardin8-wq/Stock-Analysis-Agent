@@ -1,155 +1,113 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PPAP Financial Dashboard | CSX Analysis</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        navy: '#1A2B3C',
-                        slate: '#475569',
-                        success: '#28A745',
-                        danger: '#DC3545',
-                        amber: '#FFC107',
-                        light: '#F8F9FA',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                        mono: ['ui-monospace', 'monospace']
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        .tabular { font-variant-numeric: tabular-nums; }
-        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSX Real-Time Stock Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
+    h2 { color: #1e293b; }
+    table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background-color: #0f172a; color: #fff; }
+    tr:hover { background-color: #f8fafc; }
+    .status { margin-bottom: 15px; font-weight: bold; color: #0284c7; }
+    .positive { color: #16a34a; font-weight: bold; }
+    .negative { color: #dc2626; font-weight: bold; }
+  </style>
 </head>
-<body class="bg-gray-100 text-slate font-sans antialiased">
+<body>
 
-    <!-- Sticky Header -->
-    <header class="sticky top-0 z-50 glass border-b border-gray-200">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="bg-navy text-white font-bold px-3 py-1 rounded">CSX</div>
-                <h1 class="font-bold text-lg text-navy">PPAP Financial Analysis</h1>
-            </div>
-            <div class="flex items-center space-x-6 text-sm">
-                <div class="text-right">
-                    <p class="text-xs uppercase tracking-wider text-gray-500">Price</p>
-                    <p class="font-bold tabular text-navy">13,080 KHR</p>
-                </div>
-            </div>
-        </div>
-    </header>
+  <h2>Cambodia Securities Exchange (CSX) - Live Board</h2>
+  <div class="status" id="status">Status: Fetching live data from CSX...</div>
 
-    <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+  <table>
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th>Close Price (KHR)</th>
+        <th>Change</th>
+        <th>Open</th>
+        <th>High</th>
+        <th>Low</th>
+        <th>Volume</th>
+      </tr>
+    </thead>
+    <tbody id="stock-data">
+      <tr><td colspan="7">Loading CSX market data...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    async function fetchCSXData() {
+      const statusEl = document.getElementById('status');
+      const tableBody = document.getElementById('stock-data');
+      
+      // Target CSX Trade Summary URL via a free CORS proxy
+      const csxUrl = 'https://csx.com.kh/en/market-data/stock/trade-summary';
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(csxUrl)}`;
+
+      try {
+        const response = await fetch(proxyUrl);
+        const data = await response.json();
         
-        <!-- Hero Section -->
-        <section class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <span class="inline-block bg-green-100 text-success text-xs font-bold px-3 py-1 rounded-full mb-3">BUY ON WEAKNESS / ACCUMULATE</span>
-                    <h2 class="text-4xl font-extrabold text-navy">Phnom Penh Autonomous Port</h2>
-                    <p class="text-gray-500 mt-2">Market Cap: 270.55 Billion KHR</p>
-                </div>
-                <div class="text-left md:text-right border-t md:border-t-0 pt-4 md:pt-0">
-                    <p class="text-sm font-medium text-gray-400">Current Valuation</p>
-                    <p class="text-3xl font-bold tabular text-navy">0.3x <span class="text-lg font-normal text-slate">P/B Ratio</span></p>
-                </div>
-            </div>
-        </section>
+        // Convert HTML string from CSX into a parsable DOM document
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(data.contents, 'text/html');
+        
+        // Find the market table containing Auction Trading Method (ATM) stock data
+        const rows = doc.querySelectorAll('table tbody tr');
+        let htmlOutput = '';
+        let foundStocks = 0;
 
-        <!-- Main Analysis Grid -->
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            <!-- Fundamentals -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                <h3 class="text-xl font-bold text-navy mb-6 border-b pb-4">Fundamental Ratios</h3>
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center">
-                        <span class="font-medium">P/E Ratio</span>
-                        <span class="tabular font-bold text-success">3.3x</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="font-medium">ROE</span>
-                        <span class="tabular font-bold text-navy">9.1%</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="font-medium">Dividend Yield</span>
-                        <span class="tabular font-bold text-navy">3.12%</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="font-medium">Total Equity</span>
-                        <span class="tabular font-bold text-navy">903.2B KHR</span>
-                    </div>
-                </div>
-            </div>
+        rows.forEach(row => {
+          const cols = row.querySelectorAll('td');
+          // Validate row data format (expects standard ticker row)
+          if (cols.length >= 8) {
+            const ticker = cols[0].innerText.trim();
+            const close = cols[1].innerText.trim();
+            const change = cols[2].innerText.trim();
+            const open = cols[3].innerText.trim();
+            const high = cols[4].innerText.trim();
+            const low = cols[5].innerText.trim();
+            const volume = cols[6].innerText.trim();
 
-            <!-- Technicals -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                <h3 class="text-xl font-bold text-navy mb-6 border-b pb-4">Technical Indicators</h3>
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center">
-                        <span class="font-medium">Market Trend</span>
-                        <span class="bg-red-50 text-danger px-2 py-1 rounded text-xs font-bold">BEARISH</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="font-medium">50-Day MA</span>
-                        <span class="tabular text-gray-600">13,250 KHR</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="font-medium">200-Day MA</span>
-                        <span class="tabular text-gray-600">13,600 KHR</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="font-medium">Support Level</span>
-                        <span class="tabular font-bold text-navy">13,000 KHR</span>
-                    </div>
-                </div>
-            </div>
-        </section>
+            if (ticker && ticker.length <= 5) {
+              const changeClass = parseFloat(change) > 0 ? 'positive' : (parseFloat(change) < 0 ? 'negative' : '');
+              htmlOutput += `
+                <tr>
+                  <td><strong>${ticker}</strong></td>
+                  <td>${close}</td>
+                  <td class="${changeClass}">${change}</td>
+                  <td>${open}</td>
+                  <td>${high}</td>
+                  <td>${low}</td>
+                  <td>${volume}</td>
+                </tr>
+              `;
+              foundStocks++;
+            }
+          }
+        });
 
-        <!-- Synthesis -->
-        <section class="bg-navy text-white p-8 rounded-2xl">
-            <h3 class="text-2xl font-bold mb-4">Strategic Synthesis</h3>
-            <p class="text-lg leading-relaxed text-blue-100">
-                A stark divergence exists between strong fundamentals—characterized by a deep-value monopoly status—and current bearish technicals. The current price is viewed as an <strong>asymmetric long-term investment opportunity</strong> where the risk of capital loss is mitigated by the massive equity base.
-            </p>
-        </section>
+        if (foundStocks > 0) {
+          tableBody.innerHTML = htmlOutput;
+          statusEl.innerText = `Status: Updated live at ${new Date().toLocaleTimeString()}`;
+        } else {
+          statusEl.innerText = 'Status: Waiting for market data response...';
+        }
 
-        <!-- Risk & Catalysts -->
-        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-2xl border border-gray-200">
-                <h4 class="font-bold text-navy mb-4">Risk Profile</h4>
-                <ul class="space-y-3 text-sm">
-                    <li class="flex items-start"><span class="text-amber mr-2">⚠️</span> Low daily liquidity causing potential slippage.</li>
-                    <li class="flex items-start"><span class="text-amber mr-2">⚠️</span> State-owned status limits aggressive share buybacks.</li>
-                </ul>
-            </div>
-            <div class="bg-white p-6 rounded-2xl border border-gray-200">
-                <h4 class="font-bold text-navy mb-4">Growth Catalysts</h4>
-                <ul class="space-y-3 text-sm">
-                    <li class="flex items-start"><span class="text-success mr-2">📈</span> 25% growth in container throughput.</li>
-                    <li class="flex items-start"><span class="text-success mr-2">⚓</span> Funan Techo Canal: Transformative, multi-decade macro catalyst.</li>
-                </ul>
-            </div>
-        </section>
+      } catch (error) {
+        console.error('CSX fetch error:', error);
+        statusEl.innerText = 'Status: Unable to reach CSX. Retrying shortly...';
+      }
+    }
 
-        <!-- Bottom Line -->
-        <section class="bg-gray-900 text-white p-10 rounded-2xl shadow-xl">
-            <h3 class="text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">Final Verdict</h3>
-            <p class="text-xl md:text-2xl font-medium">
-                PPAP is a severely undervalued monopoly trading at distressed-asset multiples. Despite poor liquidity and bearish technicals, the stock represents a rare accumulation zone for patient capital seeking exposure to a premier sovereign infrastructure asset.
-            </p>
-        </section>
+    // Load data immediately on page load
+    fetchCSXData();
 
-    </main>
-
+    // Auto-refresh every 30 seconds during active trading sessions
+    setInterval(fetchCSXData, 30000);
+  </script>
 </body>
 </html>

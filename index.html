@@ -1,213 +1,35 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CSX Live Market & AI Financial Analyst</title>
-  <style>
-    :root { --bg: #f8fafc; --card-bg: #ffffff; --primary: #0f172a; --accent: #2563eb; --green: #16a34a; --red: #dc2626; --border: #e2e8f0; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1e293b; }
-    .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
-    .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid var(--border); }
-    h2 { margin-top: 0; color: var(--primary); font-size: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
-    .table-container { overflow-x: auto; max-height: 480px; overflow-y: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; text-align: left; }
-    th { background: var(--primary); color: white; padding: 10px; position: sticky; top: 0; }
-    td { padding: 10px; border-bottom: 1px solid var(--border); }
-    .positive { color: var(--green); font-weight: bold; }
-    .negative { color: var(--red); font-weight: bold; }
-    .status-badge { font-size: 0.8rem; padding: 6px 12px; border-radius: 6px; background: #e0f2fe; color: #0369a1; display: inline-block; margin-bottom: 12px; font-weight: 600; }
-    .api-key-box { margin-bottom: 15px; }
-    input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; margin-top: 5px; }
-    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin: 15px 0; }
-    button { background: var(--accent); color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
-    button:hover { opacity: 0.9; }
-    .chat-output { height: 300px; border: 1px solid var(--border); border-radius: 6px; padding: 12px; overflow-y: auto; background: #fafafa; font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap; }
-    .input-row { display: flex; gap: 10px; margin-top: 10px; }
-    .input-row input { flex: 1; margin: 0; }
-  </style>
-</head>
-<body>
+from playwright.sync_api import sync_playwright
+import json
 
-<div class="container">
-  
-  <!-- LEFT: CSX Board -->
-  <div class="card">
-    <h2>📊 CSX Market Board (All 12 Companies)</h2>
-    <div id="status-badge" class="status-badge">CSX Data Ready</div>
-    
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Ticker</th>
-            <th>Close (KHR)</th>
-            <th>Change</th>
-            <th>Open</th>
-            <th>High</th>
-            <th>Low</th>
-            <th>Volume</th>
-          </tr>
-        </thead>
-        <tbody id="csx-board"></tbody>
-      </table>
-    </div>
-  </div>
+def get_live_csx_data(pichar, 123456789):
+    with sync_playwright() as p:
+        # Launch browser
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context()
+        page = context.new_page()
 
-  <!-- RIGHT: AI Analyst -->
-  <div class="card">
-    <h2>🤖 AI Financial Analyst</h2>
-    
-    <div class="api-key-box">
-      <label style="font-size: 0.8rem; font-weight: bold;">Google AI Studio Gemini Key (Free):</label>
-      <input type="password" id="api-key" placeholder="Paste Gemini API key..." onchange="saveApiKey()">
-    </div>
+        # Listen to incoming network responses
+        def handle_response(response):
+            # Target internal APIs delivering market depth/prices
+            if "market" in response.url or "orderbook" in response.url:
+                try:
+                    data = response.json()
+                    print("Captured Live Orderbook Data:", json.dumps(data, indent=2))
+                except Exception:
+                    pass
 
-    <div class="btn-group">
-      <button onclick="runAnalysis('all')">Analyze All 12 Companies</button>
-      <button onclick="runAnalysis('recommend')">Buy / Hold / Sell Ratings</button>
-    </div>
+        page.on("response", handle_response)
 
-    <div id="ai-output" class="chat-output">Enter your free Gemini API Key above and click a button to run analysis...</div>
+        # 1. Navigate to login page
+        page.goto("https://i.csx.com.kh/")
+        
+        # 2. Input credentials (replace with actual field selectors)
+        page.fill("input[name='username']", username)
+        page.fill("input[name='password']", password)
+        page.click("button[type='submit']")
 
-    <div class="input-row">
-      <input type="text" id="user-prompt" placeholder="Ask e.g. Evaluate ABC & PPAP..." onkeypress="handleKeyPress(event)">
-      <button onclick="sendCustomPrompt()">Ask AI</button>
-    </div>
-  </div>
-
-</div>
-
-<script>
-  // Default CSX Baseline Data (Ensures app works immediately)
-  let liveMarketData = [
-    { ticker: 'PWSA', price: '6,400', change: '0', open: '6,400', high: '6,420', low: '6,360', volume: '9,740' },
-    { ticker: 'GTI', price: '8,080', change: '20', open: '8,060', high: '8,080', low: '8,000', volume: '1,202' },
-    { ticker: 'PPAP', price: '13,080', change: '20', open: '13,120', high: '13,120', low: '13,020', volume: '18,111' },
-    { ticker: 'PPSP', price: '1,210', change: '10', open: '1,220', high: '1,230', low: '1,210', volume: '35,593' },
-    { ticker: 'PAS', price: '14,460', change: '80', open: '14,460', high: '14,460', low: '14,380', volume: '10,221' },
-    { ticker: 'ABC', price: '7,660', change: '160', open: '7,520', high: '7,740', low: '7,520', volume: '338,005' },
-    { ticker: 'PEPC', price: '2,540', change: '0', open: '2,540', high: '2,540', low: '2,530', volume: '275' },
-    { ticker: 'MJQE', price: '2,040', change: '10', open: '2,030', high: '2,040', low: '2,020', volume: '86,749' },
-    { ticker: 'CGSM', price: '3,000', change: '0', open: '3,000', high: '3,010', low: '2,990', volume: '17,631' },
-    { ticker: 'DBDE', price: '2,140', change: '20', open: '2,140', high: '2,150', low: '2,100', volume: '38,487' },
-    { ticker: 'JSL', price: '2,020', change: '20', open: '2,010', high: '2,030', low: '2,010', volume: '2,541' },
-    { ticker: 'PCG', price: '3,780', change: '10', open: '3,730', high: '3,790', low: '3,730', volume: '260' }
-  ];
-
- 
-  const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUAfmJw3kG-Sp4Dn_rLXOgdGvEfRZ0k0sKPJ1aDe889SqvtsjatZvGsWhvm5eNW051aQ/exec";
-
-  function renderTable() {
-    const boardEl = document.getElementById('csx-board');
-    let html = '';
-    liveMarketData.forEach(s => {
-      const changeClass = parseFloat(s.change) > 0 ? 'positive' : (parseFloat(s.change) < 0 ? 'negative' : '');
-      html += `<tr>
-        <td><strong>${s.ticker}</strong></td>
-        <td>${s.price}</td>
-        <td class="${changeClass}">${s.change}</td>
-        <td>${s.open}</td>
-        <td>${s.high}</td>
-        <td>${s.low}</td>
-        <td>${s.volume}</td>
-      </tr>`;
-    });
-    boardEl.innerHTML = html;
-  }
-
-async function fetchCSXData() {
-  renderTable(); // Render baseline board immediately
-  const statusEl = document.getElementById('status-badge');
-
-  if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("OPTIONAL_PASTE")) {
-    statusEl.innerText = "Status: Displaying Baseline CSX Market Board";
-    return;
-  }
-
-  try {
-    statusEl.innerText = 'Fetching live CSX board...';
-    const res = await fetch(GOOGLE_SCRIPT_URL);
-    const result = await res.json();
-
-    if (result.status === "success" && result.data.length > 0) {
-      liveMarketData = result.data;
-      renderTable();
-      statusEl.innerText = `Live CSX Verified: ${new Date().toLocaleTimeString()}`;
-      statusEl.style.background = '#dcfce7';
-      statusEl.style.color = '#15803d';
-    } else {
-      statusEl.innerText = "Market Board Active (Using Cached Board)";
-    }
-  } catch (err) {
-    console.error("Fetch Error:", err);
-    statusEl.innerText = "Connection Error (Fallback Enabled)";
-  }
-}
-
-  function saveApiKey() {
-    localStorage.setItem('gemini_key', document.getElementById('api-key').value);
-  }
-
-  window.onload = () => {
-    fetchCSXData();
-    const savedKey = localStorage.getItem('gemini_key');
-    if (savedKey) document.getElementById('api-key').value = savedKey;
-  };
-
-  async function callGemini(userQuery) {
-    const apiKey = document.getElementById('api-key').value.trim();
-    const outputEl = document.getElementById('ai-output');
-
-    if (!apiKey) {
-      alert("Please paste your free Gemini API Key from aistudio.google.com");
-      return;
-    }
-
-    outputEl.innerText = "Analyzing CSX data with AI...";
-
-    const systemPrompt = `You are a financial analyst specializing in the Cambodia Securities Exchange (CSX).
-    Here is the exact real-time CSX market board data:
-    ${JSON.stringify(liveMarketData)}
-    
-    Evaluate the stocks using technical analysis (support, resistance, price targets) and fundamental principles.
-    Always reference exact KHR prices from the data provided. Provide Buy, Hold, or Sell ratings with entry/exit targets.`;
-
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: `${systemPrompt}\n\nUser Question: ${userQuery}` }] }] })
-      });
-
-      const resData = await response.json();
-      if (resData.candidates && resData.candidates[0].content.parts[0].text) {
-        outputEl.innerText = resData.candidates[0].content.parts[0].text;
-      } else {
-        outputEl.innerText = "Gemini Response Error: " + JSON.stringify(resData);
-      }
-    } catch (err) {
-      outputEl.innerText = "API Error: " + err.message;
-    }
-  }
-
-  function runAnalysis(type) {
-    if (type === 'all') callGemini("Provide a clear fundamental and technical summary for all 12 listed CSX companies using current market board data.");
-    if (type === 'recommend') callGemini("Give direct Buy, Hold, or Sell ratings with entry targets for each CSX stock based on real-time prices and volume.");
-  }
-
-  function sendCustomPrompt() {
-    const input = document.getElementById('user-prompt');
-    if (input.value.trim()) {
-      callGemini(input.value);
-      input.value = '';
-    }
-  }
-
-  function handleKeyPress(e) { if (e.key === 'Enter') sendCustomPrompt(); }
-</script>
-
-</body>
-</html>
+        # 3. Wait for dashboard/trading interface to load
+        page.wait_for_selector(".trading-view", timeout=15000)
+        
+        # Keep open or poll as needed
+        browser.close()

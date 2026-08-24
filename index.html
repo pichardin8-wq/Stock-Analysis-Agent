@@ -5,17 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 import streamlit as st
 
-# Import google-genai SDK
-try:
-    from google import genai
-    from google.genai import types
-    HAS_GENAI = True
-except ImportError:
-    HAS_GENAI = False
-
-# ------------------------------------------------------------------------------
 # 1. Page Configuration & Layout setup
-# ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="CSX Agent - AI Stock Analyst",
     page_icon="📈",
@@ -24,6 +14,14 @@ st.set_page_config(
 
 st.title("📈 CSX Agent")
 st.caption("AI-Powered Cambodian Securities Exchange (CSX) Stock Analysis")
+
+# Import google-genai SDK
+try:
+    from google import genai
+    from google.genai import types
+    HAS_GENAI = True
+except ImportError:
+    HAS_GENAI = False
 
 # List of main CSX Tickers
 CSX_TICKERS = [
@@ -48,9 +46,8 @@ FALLBACK_DATA = {
     "PCG": {"name": "Phnom Penh Commercial Bank", "price": 4800, "pe": 6.2, "pb": 0.60, "high": 4850, "low": 4760, "volume": 15000}
 }
 
-# ------------------------------------------------------------------------------
+
 # 2. Web Scraping & Fallback Logic
-# ------------------------------------------------------------------------------
 @st.cache_data(ttl=600)  # Cache results for 10 minutes
 def scrape_csx_market_data(ticker: str) -> dict:
     """
@@ -75,7 +72,6 @@ def scrape_csx_market_data(ticker: str) -> dict:
                     text = row.get_text()
                     if ticker in text:
                         cols = [c.get_text(strip=True) for c in row.find_all(["td", "th"])]
-                        # Try parsing numerical values from columns if found
                         nums = [re.sub(r"[^\d.]", "", c) for c in cols if re.search(r"\d", c)]
                         if len(nums) >= 4:
                             return {
@@ -88,18 +84,17 @@ def scrape_csx_market_data(ticker: str) -> dict:
                                 "source": "Live CSX Web Scraping"
                             }
     except Exception:
-        pass  # Fallback gracefully on timeout, status error, or parsing failure
+        pass  # Fallback gracefully on timeout or parsing error
 
-    # Default/Fallback return
+    # Default / Fallback return
     fallback_info = FALLBACK_DATA.get(ticker, {
         "price": 5000, "pe": 8.0, "pb": 0.8, "high": 5100, "low": 4900, "volume": 10000
     })
     fallback_info["source"] = "Estimated CSX Market Benchmark (Fallback)"
     return fallback_info
 
-# ------------------------------------------------------------------------------
+
 # 3. Inputs Section (Sidebar & Main UI)
-# ------------------------------------------------------------------------------
 st.sidebar.header("Agent Control Panel")
 
 selected_ticker = st.sidebar.selectbox("Select CSX Stock Ticker", CSX_TICKERS)
@@ -117,7 +112,7 @@ desirable_price = st.sidebar.number_input(
     step=50.0
 )
 
-analyze_button = st.sidebar.button("🤖 Analyze Stock", use_container_width=True)
+analyze_button = st.sidebar.button("Analyze Stock", use_container_width=True)
 
 # Main UI displaying data summary
 st.subheader(f"Selected Ticker: **{selected_ticker}**")
@@ -133,9 +128,8 @@ st.caption(f"*Data Source: {current_market['source']}*")
 
 st.divider()
 
-# ------------------------------------------------------------------------------
+
 # 4. Analysis Logic & Gemini Integration
-# ------------------------------------------------------------------------------
 def generate_ai_analysis(ticker: str, market_data: dict, target_price: float, user_intent: str) -> str:
     """Invokes Google Gemini SDK to analyze stock data and produce strategic insights."""
     if not HAS_GENAI:
@@ -171,9 +165,9 @@ Evaluate the following stock analysis request and generate a clear structured ou
    - "Need to Hold"
 2. Provide a breakdown under the following exact section titles:
    - **Real-time Data Summary**
-   - **Fundamental Valuation Analysis** (Evaluate P/E and P/B ratios against general frontier market expectations and company book value)
-   - **Technical & Price Margin Analysis** (Calculate the safety margin percentage: ((Desirable Price - Market Price) / Market Price) * 100, and evaluate the target price vs intraday High/Low range)
-   - **Final Strategic Verdict** (Clear action plan tailored to the user's intent: {user_intent})
+   - **Fundamental Valuation Analysis**
+   - **Technical & Price Margin Analysis**
+   - **Final Strategic Verdict**
 """
 
     try:
@@ -188,9 +182,8 @@ Evaluate the following stock analysis request and generate a clear structured ou
     except Exception as e:
         return f"An error occurred while communicating with Gemini API: {str(e)}"
 
-# ------------------------------------------------------------------------------
+
 # 5. Output Execution
-# ------------------------------------------------------------------------------
 if analyze_button:
     with st.spinner(f"CSX Agent is evaluating {selected_ticker}..."):
         analysis_result = generate_ai_analysis(
@@ -203,4 +196,4 @@ if analyze_button:
         st.markdown("## 📋 CSX Agent Recommendation & Analysis")
         st.markdown(analysis_result)
 else:
-        st.info("👈 Set your desirable price and target intent in the sidebar, then click **Analyze Stock** to generate insights.")
+    st.info("👈 Set your desirable price and target intent in the sidebar, then click **Analyze Stock** to generate insights.")

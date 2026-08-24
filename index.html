@@ -3,14 +3,14 @@ from playwright.sync_api import sync_playwright
 
 def get_live_csx_data(username, password):
     with sync_playwright() as p:
-        # Launch browser
+        # Launch browser instance
         browser = p.chromium.launch(headless=True)
         context = browser.new_context()
         page = context.new_page()
 
         # Listen to incoming network responses
         def handle_response(response):
-            # Target internal APIs delivering market depth/prices
+            # Target internal APIs delivering market depth or prices
             if "market" in response.url or "orderbook" in response.url:
                 try:
                     data = response.json()
@@ -20,19 +20,19 @@ def get_live_csx_data(username, password):
 
         page.on("response", handle_response)
 
-        # 1. Navigate to login page
+        # 1. Navigate to CSX portal login
         page.goto("https://i.csx.com.kh/")
 
-        # 2. Input credentials (replace with actual field selectors)
+        # 2. Input credentials (update selectors if CSX uses different IDs/names)
         page.fill("input[name='username']", username)
         page.fill("input[name='password']", password)
         page.click("button[type='submit']")
 
-        # 3. Wait for dashboard/trading interface to load
+        # 3. Wait for the trading interface to render
         page.wait_for_selector(".trading-view", timeout=15000)
 
-        # Keep open or poll as needed
+        # Close session
         browser.close()
 
-# Example execution:
+# Example execution call:
 # get_live_csx_data("pichar", "123456789")

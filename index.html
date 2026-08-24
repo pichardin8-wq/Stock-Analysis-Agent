@@ -5,7 +5,9 @@ import requests
 from bs4 import BeautifulSoup
 import streamlit as st
 
-# 1. Page Configuration & Layout setup
+# ------------------------------------------------------------------------------
+# 1. Page Configuration & Setup
+# ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="CSX Agent - AI Stock Analyst",
     page_icon="📈",
@@ -30,30 +32,28 @@ CSX_TICKERS = [
     "PEPC", "PCG"
 ]
 
-# Default / Fallback metrics for CSX tickers in case live web-scraping fails
+# Fallback financial metrics for CSX tickers
 FALLBACK_DATA = {
-    "ABC": {"name": "ACLEDA Bank Plc", "price": 9800, "pe": 6.8, "pb": 0.85, "high": 9900, "low": 9740, "volume": 45200},
-    "CGSM": {"name": "CamGSM Plc (Cellcard)", "price": 2480, "pe": 12.1, "pb": 1.10, "high": 2500, "low": 2460, "volume": 128000},
-    "GTI": {"name": "Grand Twins International", "price": 2740, "pe": 8.4, "pb": 0.45, "high": 2780, "low": 2720, "volume": 8500},
-    "MJQE": {"name": "Mengly J. Quach Education", "price": 2080, "pe": 15.2, "pb": 1.40, "high": 2100, "low": 2060, "volume": 62000},
-    "PAS": {"name": "Sihanoukville Autonomous Port", "price": 12400, "pe": 11.5, "pb": 1.25, "high": 12500, "low": 12360, "volume": 14200},
-    "PPAP": {"name": "Phnom Penh Autonomous Port", "price": 14100, "pe": 7.2, "pb": 0.70, "high": 14200, "low": 14000, "volume": 5300},
-    "PPSP": {"name": "Phnom Penh SEZ Plc", "price": 2180, "pe": 9.1, "pb": 0.65, "high": 2200, "low": 2160, "volume": 31000},
-    "PWSA": {"name": "Phnom Penh Water Supply Authority", "price": 7160, "pe": 5.9, "pb": 0.58, "high": 7200, "low": 7120, "volume": 18900},
-    "DBDE": {"name": "DB & Development", "price": 2100, "pe": 10.5, "pb": 0.80, "high": 2120, "low": 2080, "volume": 11000},
-    "JSL": {"name": "JS Land Plc", "price": 3400, "pe": 14.0, "pb": 1.15, "high": 3450, "low": 3380, "volume": 4200},
-    "PEPC": {"name": "Pestech (Cambodia) Plc", "price": 2250, "pe": 11.0, "pb": 0.75, "high": 2300, "low": 2230, "volume": 6700},
-    "PCG": {"name": "Phnom Penh Commercial Bank", "price": 4800, "pe": 6.2, "pb": 0.60, "high": 4850, "low": 4760, "volume": 15000}
+    "ABC": {"name": "ACLEDA Bank Plc", "price": 7660, "pe": 4.07, "pb": 0.49, "high": 7740, "low": 7520, "volume": 338005},
+    "CGSM": {"name": "CamGSM Plc (Cellcard)", "price": 3000, "pe": 272.73, "pb": 4.85, "high": 3010, "low": 2990, "volume": 17631},
+    "GTI": {"name": "Grand Twins International", "price": 8080, "pe": 56.90, "pb": 1.14, "high": 8080, "low": 8000, "volume": 1202},
+    "MJQE": {"name": "Mengly J. Quach Education", "price": 2040, "pe": 24.29, "pb": 5.14, "high": 2040, "low": 2020, "volume": 86749},
+    "PAS": {"name": "Sihanoukville Autonomous Port", "price": 14460, "pe": 5.55, "pb": 1.34, "high": 14460, "low": 14380, "volume": 10221},
+    "PPAP": {"name": "Phnom Penh Autonomous Port", "price": 13080, "pe": 3.25, "pb": 0.50, "high": 13120, "low": 13020, "volume": 18111},
+    "PPSP": {"name": "Phnom Penh SEZ Plc", "price": 1210, "pe": 86.43, "pb": 0.57, "high": 1230, "low": 1210, "volume": 35593},
+    "PWSA": {"name": "Phnom Penh Water Supply Authority", "price": 6400, "pe": 5.68, "pb": 0.50, "high": 6420, "low": 6360, "volume": 9740},
+    "DBDE": {"name": "DB & Development", "price": 2140, "pe": 3.84, "pb": 0.87, "high": 2150, "low": 2100, "volume": 38487},
+    "JSL": {"name": "JS Land Plc", "price": 2020, "pe": 10.0, "pb": 10.58, "high": 2030, "low": 2010, "volume": 2541},
+    "PEPC": {"name": "Pestech (Cambodia) Plc", "price": 2540, "pe": 11.0, "pb": 0.75, "high": 2540, "low": 2530, "volume": 275},
+    "PCG": {"name": "Phnom Penh Commercial Bank", "price": 3780, "pe": 6.2, "pb": 0.60, "high": 3790, "low": 3730, "volume": 260}
 }
 
-
+# ------------------------------------------------------------------------------
 # 2. Web Scraping & Fallback Logic
-@st.cache_data(ttl=600)  # Cache results for 10 minutes
+# ------------------------------------------------------------------------------
+@st.cache_data(ttl=600)
 def scrape_csx_market_data(ticker: str) -> dict:
-    """
-    Attempts to scrape live market data from CSX trade summary page.
-    Falls back to mock/estimated stock fundamentals if request fails or table isn't found.
-    """
+    """Scrapes market data from CSX trade summary or falls back to benchmark data."""
     url = "https://csx.com.kh/en/market-data/stock/trade-summary"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
@@ -72,35 +72,44 @@ def scrape_csx_market_data(ticker: str) -> dict:
                     text = row.get_text()
                     if ticker in text:
                         cols = [c.get_text(strip=True) for c in row.find_all(["td", "th"])]
-                        nums = [re.sub(r"[^\d.]", "", c) for c in cols if re.search(r"\d", c)]
-                        if len(nums) >= 4:
-                            return {
-                                "price": float(nums[0]) if nums[0] else FALLBACK_DATA[ticker]["price"],
-                                "high": float(nums[1]) if len(nums) > 1 and nums[1] else FALLBACK_DATA[ticker]["high"],
-                                "low": float(nums[2]) if len(nums) > 2 and nums[2] else FALLBACK_DATA[ticker]["low"],
-                                "volume": int(float(nums[3])) if len(nums) > 3 and nums[3] else FALLBACK_DATA[ticker]["volume"],
-                                "pe": FALLBACK_DATA.get(ticker, {}).get("pe", 8.0),
-                                "pb": FALLBACK_DATA.get(ticker, {}).get("pb", 0.9),
-                                "source": "Live CSX Web Scraping"
-                            }
-    except Exception:
-        pass  # Fallback gracefully on timeout or parsing error
+                        if len(cols) >= 8:
+                            # Table column layout: Stock | Close | Change | Open | High | Low | Volume | Value | P/E | P/B
+                            clean_nums = [re.sub(r"[^\d.]", "", col) for col in cols]
+                            price = float(clean_nums[1]) if clean_nums[1] else None
+                            high = float(clean_nums[4]) if clean_nums[4] else None
+                            low = float(clean_nums[5]) if clean_nums[5] else None
+                            volume = int(float(clean_nums[6])) if clean_nums[6] else None
+                            pe = float(clean_nums[8]) if len(clean_nums) > 8 and clean_nums[8] else None
+                            pb = float(clean_nums[9]) if len(clean_nums) > 9 and clean_nums[9] else None
 
-    # Default / Fallback return
+                            if price:
+                                fallback = FALLBACK_DATA.get(ticker, {})
+                                return {
+                                    "price": price,
+                                    "high": high if high else fallback.get("high", price),
+                                    "low": low if low else fallback.get("low", price),
+                                    "volume": volume if volume else fallback.get("volume", 0),
+                                    "pe": pe if pe else fallback.get("pe", 8.0),
+                                    "pb": pb if pb else fallback.get("pb", 0.9),
+                                    "source": "Live CSX Web Scraping"
+                                }
+    except Exception:
+        pass
+
     fallback_info = FALLBACK_DATA.get(ticker, {
         "price": 5000, "pe": 8.0, "pb": 0.8, "high": 5100, "low": 4900, "volume": 10000
     })
-    fallback_info["source"] = "Estimated CSX Market Benchmark (Fallback)"
+    fallback_info["source"] = "Estimated CSX Benchmark (Fallback)"
     return fallback_info
 
-
-# 3. Inputs Section (Sidebar & Main UI)
+# ------------------------------------------------------------------------------
+# 3. Sidebar & User Inputs
+# ------------------------------------------------------------------------------
 st.sidebar.header("Agent Control Panel")
 
 selected_ticker = st.sidebar.selectbox("Select CSX Stock Ticker", CSX_TICKERS)
 intent = st.sidebar.selectbox("Your Trading Intent", ["Buy", "Sell", "Hold"])
 
-# Get baseline data to populate default desirable price
 current_market = scrape_csx_market_data(selected_ticker)
 default_price = float(current_market["price"])
 
@@ -112,32 +121,31 @@ desirable_price = st.sidebar.number_input(
     step=50.0
 )
 
-analyze_button = st.sidebar.button("Analyze Stock", use_container_width=True)
+analyze_button = st.sidebar.button("🤖 Analyze Stock", use_container_width=True)
 
-# Main UI displaying data summary
+# Main UI Market Header
 st.subheader(f"Selected Ticker: **{selected_ticker}**")
 
 col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("Market Price (KHR)", f"{current_market['price']:,.0f}")
 col2.metric("Intraday High", f"{current_market['high']:,.0f}")
 col3.metric("Intraday Low", f"{current_market['low']:,.0f}")
-col4.metric("P/E Ratio", f"{current_market['pe']:.1f}")
+col4.metric("P/E Ratio", f"{current_market['pe']:.2f}")
 col5.metric("P/B Ratio", f"{current_market['pb']:.2f}")
 
 st.caption(f"*Data Source: {current_market['source']}*")
-
 st.divider()
 
-
-# 4. Analysis Logic & Gemini Integration
+# ------------------------------------------------------------------------------
+# 4. Analysis Logic (Google Gemini API)
+# ------------------------------------------------------------------------------
 def generate_ai_analysis(ticker: str, market_data: dict, target_price: float, user_intent: str) -> str:
-    """Invokes Google Gemini SDK to analyze stock data and produce strategic insights."""
     if not HAS_GENAI:
         return "Error: `google-genai` SDK is not installed. Run `pip install google-genai`."
 
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        return "⚠️ **API Key Missing**: Please set the `GEMINI_API_KEY` environment variable to run live Gemini AI analysis."
+        return "⚠️ **API Key Missing**: Please set the `GEMINI_API_KEY` environment variable."
 
     client = genai.Client(api_key=api_key)
 
@@ -182,8 +190,9 @@ Evaluate the following stock analysis request and generate a clear structured ou
     except Exception as e:
         return f"An error occurred while communicating with Gemini API: {str(e)}"
 
-
+# ------------------------------------------------------------------------------
 # 5. Output Execution
+# ------------------------------------------------------------------------------
 if analyze_button:
     with st.spinner(f"CSX Agent is evaluating {selected_ticker}..."):
         analysis_result = generate_ai_analysis(
@@ -192,7 +201,6 @@ if analyze_button:
             target_price=desirable_price,
             user_intent=intent
         )
-        
         st.markdown("## 📋 CSX Agent Recommendation & Analysis")
         st.markdown(analysis_result)
 else:

@@ -1,7 +1,7 @@
-from playwright.sync_api import sync_playwright
 import json
+from playwright.sync_api import sync_playwright
 
-def get_live_csx_data(pichar, 123456789):
+def get_live_csx_data(username, password):
     with sync_playwright() as p:
         # Launch browser
         browser = p.chromium.launch(headless=True)
@@ -22,7 +22,7 @@ def get_live_csx_data(pichar, 123456789):
 
         # 1. Navigate to login page
         page.goto("https://i.csx.com.kh/")
-        
+
         # 2. Input credentials (replace with actual field selectors)
         page.fill("input[name='username']", username)
         page.fill("input[name='password']", password)
@@ -30,6 +30,9 @@ def get_live_csx_data(pichar, 123456789):
 
         # 3. Wait for dashboard/trading interface to load
         page.wait_for_selector(".trading-view", timeout=15000)
-        
+
         # Keep open or poll as needed
         browser.close()
+
+# Example execution:
+# get_live_csx_data("pichar", "123456789")

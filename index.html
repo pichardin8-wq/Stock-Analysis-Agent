@@ -1,33 +1,101 @@
-@st.cache_data(ttl=600)
-def scrape_csx_market_data(ticker: str) -> dict:
-    fallback_info = FALLBACK_DATA.get(ticker, {
-        "price": 5000, "pe": 8.0, "pb": 0.8, "high": 5100, "low": 4900, "volume": 10000, "source": "Fallback Data"
-    })
-    
-    url = "https://csx.com.kh/en/market-data/stock/trade-summary"
-    headers = {"User-Agent": "Mozilla/5.0"}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CSX Agent</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f8; margin: 0; padding: 40px 20px; color: #333; }
+        .card { max-width: 550px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        h1 { margin-top: 0; font-size: 24px; text-align: center; color: #1a252c; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        .action-group { display: flex; gap: 10px; }
+        .action-btn { flex: 1; padding: 12px; border: 1px solid #0066cc; background: #fff; color: #0066cc; font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .action-btn.active { background: #0066cc; color: #fff; }
+        .analyze-btn { width: 100%; padding: 14px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .analyze-btn:hover { background: #059669; }
+        #result { margin-top: 25px; padding: 15px; background: #f8fafc; border-left: 4px solid #0066cc; border-radius: 4px; white-space: pre-wrap; line-height: 1.5; }
+    </style>
+</head>
+<body>
 
-    try:
-        response = requests.get(url, headers=headers, timeout=3)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, "html.parser")
-            rows = soup.find_all("tr")
-            for row in rows:
-                if ticker in row.get_text():
-                    cols = [c.get_text(strip=True) for c in row.find_all(["td", "th"])]
-                    nums = [re.sub(r"[^\d.]", "", c) for c in cols if re.search(r"\d", c)]
-                    if len(nums) >= 4:
-                        return {
-                            "price": float(nums[0]),
-                            "high": float(nums[1]) if len(nums) > 1 else fallback_info["high"],
-                            "low": float(nums[2]) if len(nums) > 2 else fallback_info["low"],
-                            "volume": int(float(nums[3])) if len(nums) > 3 else fallback_info["volume"],
-                            "pe": fallback_info.get("pe", 8.0),
-                            "pb": fallback_info.get("pb", 0.9),
-                            "source": "Live CSX Web Scraping"
-                        }
-    except Exception:
-        pass
+<div class="card">
+    <h1>CSX Agent</h1>
 
-    fallback_info["source"] = "Estimated CSX Benchmark (Fallback)"
-    return fallback_info
+    <div class="form-group">
+        <label>Stock Ticker</label>
+        <select id="ticker">
+            <option value="ABC">ABC (ACLEDA Bank)</option>
+            <option value="PWSA">PWSA (Phnom Penh Water)</option>
+            <option value="PAS">PAS (Sihanoukville Autonomous Port)</option>
+            <option value="PPAP">PPAP (Phnom Penh Autonomous Port)</option>
+            <option value="GTI">GTI (Grand Twins International)</option>
+            <option value="CGSM">CGSM (Cellcard)</option>
+            <option value="MJQE">MJQE (Mengly J. Quach Education)</option>
+            <option value="DBDE">DBDE (DBD Engineering)</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Preferred Price (KHR)</label>
+        <input type="number" id="price" placeholder="e.g. 7500">
+    </div>
+
+    <div class="form-group">
+        <label>Action</label>
+        <div class="action-group">
+            <button class="action-btn active" onclick="setAction('BUY', this)">BUY</button>
+            <button class="action-btn" onclick="setAction('SELL', this)">SELL</button>
+            <button class="action-btn" onclick="setAction('HOLD', this)">HOLD</button>
+        </div>
+    </div>
+
+    <button class="analyze-btn" onclick="runAnalysis()">Analyze</button>
+
+    <div id="result" style="display:none;"></div>
+</div>
+
+<script>
+    let selectedAction = 'BUY';
+
+    function setAction(action, btn) {
+        selectedAction = action;
+        document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    async function runAnalysis() {
+        const ticker = document.getElementById('ticker').value;
+        const price = document.getElementById('price').value;
+        const resultDiv = document.getElementById('result');
+
+        if (!price) {
+            alert('Please enter your preferred price.');
+            return;
+        }
+
+        resultDiv.style.display = 'block';
+        resultDiv.innerText = 'Analyzing market data via CSX and Gemini...';
+
+        try {
+            const res = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticker, price, action: selectedAction })
+            });
+
+            const data = await res.json();
+            if (data.error) {
+                resultDiv.innerText = 'Error: ' + data.error;
+            } else {
+                resultDiv.innerText = data.analysis;
+            }
+        } catch (err) {
+            resultDiv.innerText = 'Error connecting to server.';
+        }
+    }
+</script>
+
+</body>
+</html>

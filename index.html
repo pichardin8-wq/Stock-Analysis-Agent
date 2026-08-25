@@ -49,7 +49,7 @@
         <button onclick="toggleKeyModal()" class="text-slate-400 hover:text-white">&times;</button>
       </div>
       <p class="text-xs text-slate-400">
-        Enter your Anthropic Claude API key below (`sk-ant-api...`). The key is stored locally in your browser.
+        Enter your Anthropic Claude API key (`sk-ant-api...`). The key will be sanitized and saved locally.
       </p>
       <div>
         <label class="block text-xs text-slate-300 mb-1">Claude API Key</label>
@@ -157,7 +157,6 @@
   </main>
 
   <script>
-    // Initialize empty CSX data - no hardcoded prices
     const TICKERS = ["ABC", "PWSA", "PAS", "CGSM", "PPAP", "PPSP", "GTI", "PEPC", "DBDE", "MJQE", "JSL", "PCG"];
     let CSX_DATA = {};
 
@@ -174,6 +173,12 @@
     });
 
     let selectedAction = 'BUY';
+
+    // Helper to sanitize ASCII strings for HTTP Headers
+    function cleanAsciiHeaderValue(str) {
+      if (!str) return '';
+      return str.replace(/[^\x20-\x7E]/g, '').trim();
+    }
 
     // Fetch Live Prices directly from CSX
     window.fetchLiveCSXData = async function() {
@@ -239,11 +244,16 @@
     };
 
     window.saveApiKey = function() {
-      const key = document.getElementById('apiKeyInput').value.trim();
-      if (key) {
-        localStorage.setItem('CLAUDE_API_KEY', key);
+      const rawKey = document.getElementById('apiKeyInput').value;
+      const cleanKey = cleanAsciiHeaderValue(rawKey);
+      
+      if (cleanKey) {
+        localStorage.setItem('CLAUDE_API_KEY', cleanKey);
+        document.getElementById('apiKeyInput').value = cleanKey;
         window.toggleKeyModal();
-        alert('Claude API Key saved successfully!');
+        alert('Claude API Key saved and sanitized successfully!');
+      } else {
+        alert('Invalid API key character detected.');
       }
     };
 
@@ -296,7 +306,8 @@
 
     // Call Anthropic Claude API via direct fetch call
     window.runClaudeAnalysis = async function() {
-      const apiKey = localStorage.getItem('CLAUDE_API_KEY') || document.getElementById('apiKeyInput').value.trim();
+      const storedKey = localStorage.getItem('CLAUDE_API_KEY') || document.getElementById('apiKeyInput').value;
+      const apiKey = cleanAsciiHeaderValue(storedKey);
       
       if (!apiKey) {
         window.toggleKeyModal();
@@ -310,7 +321,7 @@
       const statusInd = document.getElementById('statusIndicator');
 
       if (!targetPrice || targetPrice <= 0) {
-        alert("Please enter a valid price.");
+        alert("Please enter a valid target price.");
         return;
       }
 
@@ -345,8 +356,8 @@ Please provide a clear evaluation:
           headers: {
             "x-api-key": apiKey,
             "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-            "dangerously-allow-browser": "true"
+            "anthropic-dangerous-direct-browser-access": "true",
+            "content-type": "application/json"
           },
           body: JSON.stringify({
             model: "claude-3-5-sonnet-20241022",
@@ -377,7 +388,7 @@ Please provide a clear evaluation:
 
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem('CLAUDE_API_KEY');
-      if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
+      if (savedKey) document.getElementById('apiKeyInput').value = cleanAsciiHeaderValue(savedKey);
       window.fetchLiveCSXData();
     });
   </script>

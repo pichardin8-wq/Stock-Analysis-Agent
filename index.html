@@ -1,101 +1,305 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>CSX Agent</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f8; margin: 0; padding: 40px 20px; color: #333; }
-        .card { max-width: 550px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        h1 { margin-top: 0; font-size: 24px; text-align: center; color: #1a252c; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
-        .action-group { display: flex; gap: 10px; }
-        .action-btn { flex: 1; padding: 12px; border: 1px solid #0066cc; background: #fff; color: #0066cc; font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.2s; }
-        .action-btn.active { background: #0066cc; color: #fff; }
-        .analyze-btn { width: 100%; padding: 14px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .analyze-btn:hover { background: #059669; }
-        #result { margin-top: 25px; padding: 15px; background: #f8fafc; border-left: 4px solid #0066cc; border-radius: 4px; white-space: pre-wrap; line-height: 1.5; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSX Stock AI Trading Agent</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Gen AI SDK -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@google/genai": "https://esm.run/@google/genai"
+      }
+    }
+  </script>
 </head>
-<body>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-12">
 
-<div class="card">
-    <h1>CSX Agent</h1>
-
-    <div class="form-group">
-        <label>Stock Ticker</label>
-        <select id="ticker">
-            <option value="ABC">ABC (ACLEDA Bank)</option>
-            <option value="PWSA">PWSA (Phnom Penh Water)</option>
-            <option value="PAS">PAS (Sihanoukville Autonomous Port)</option>
-            <option value="PPAP">PPAP (Phnom Penh Autonomous Port)</option>
-            <option value="GTI">GTI (Grand Twins International)</option>
-            <option value="CGSM">CGSM (Cellcard)</option>
-            <option value="MJQE">MJQE (Mengly J. Quach Education)</option>
-            <option value="DBDE">DBDE (DBD Engineering)</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label>Preferred Price (KHR)</label>
-        <input type="number" id="price" placeholder="e.g. 7500">
-    </div>
-
-    <div class="form-group">
-        <label>Action</label>
-        <div class="action-group">
-            <button class="action-btn active" onclick="setAction('BUY', this)">BUY</button>
-            <button class="action-btn" onclick="setAction('SELL', this)">SELL</button>
-            <button class="action-btn" onclick="setAction('HOLD', this)">HOLD</button>
+  <!-- Header & API Key Setup -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">📈</span>
+        <div>
+          <h1 class="text-xl font-bold text-white">CSX AI Trading Agent</h1>
+          <p class="text-xs text-slate-400">Cambodia Securities Exchange Real-time Analyzer</p>
         </div>
+      </div>
+      
+      <!-- Gemini API Key Input -->
+      <div class="w-full sm:w-auto flex items-center gap-2 bg-slate-900 p-1.5 rounded-lg border border-slate-700">
+        <input type="password" id="apiKeyInput" placeholder="Paste Gemini API Key" 
+               class="bg-transparent text-sm px-3 py-1 outline-none w-full sm:w-64 text-white placeholder-slate-500" />
+        <button id="saveKeyBtn" onclick="saveApiKey()" 
+                class="bg-blue-600 hover:bg-blue-500 text-xs text-white px-3 py-1.5 rounded font-medium transition">
+          Save Key
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+    
+    <!-- Left Column: User Input & Control Panel -->
+    <div class="lg:col-span-5 space-y-6">
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-6 shadow-xl">
+        <h2 class="text-lg font-semibold mb-4 text-blue-400 flex items-center gap-2">
+          <span>1.</span> Choose CSX Listed Company
+        </h2>
+        
+        <!-- Stock Selector -->
+        <label class="block text-xs text-slate-400 mb-1">Select Ticker Symbol (12 Listed Stocks)</label>
+        <select id="tickerSelect" onchange="onStockChange()" 
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 outline-none">
+        </select>
+
+        <!-- Current Stock Info Badge -->
+        <div id="stockBadge" class="mt-4 p-4 rounded-lg bg-slate-900/90 border border-slate-700/60 hidden">
+          <div class="flex justify-between items-baseline mb-2">
+            <span id="badgeSymbol" class="text-xl font-bold text-white">---</span>
+            <span id="badgePrice" class="text-lg font-semibold text-emerald-400">--- KHR</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs text-slate-400">
+            <div>Day Range: <span id="badgeRange" class="text-slate-200">---</span></div>
+            <div>Volume: <span id="badgeVolume" class="text-slate-200">---</span></div>
+            <div>Est. P/E Ratio: <span id="badgePE" class="text-slate-200">---</span></div>
+            <div>Est. P/B Ratio: <span id="badgePB" class="text-slate-200">---</span></div>
+          </div>
+        </div>
+
+        <h2 class="text-lg font-semibold mt-6 mb-4 text-blue-400 flex items-center gap-2">
+          <span>2.</span> Set Desired Price & Action
+        </h2>
+
+        <!-- Numeric Price Input -->
+        <div class="mb-4">
+          <label class="block text-xs text-slate-400 mb-1">Your Target Entry/Exit Price (KHR)</label>
+          <input type="number" id="targetPriceInput" step="10" placeholder="e.g. 7600" 
+                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white font-mono focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+
+        <!-- Buy / Sell Toggle Buttons -->
+        <div class="mb-6">
+          <label class="block text-xs text-slate-400 mb-2">Order Action</label>
+          <div class="grid grid-cols-2 gap-3">
+            <button id="buyToggleBtn" onclick="setAction('BUY')" 
+                    class="py-2.5 rounded-lg border border-emerald-500/50 bg-emerald-500/10 text-emerald-400 font-semibold text-sm transition hover:bg-emerald-500/20">
+              BUY
+            </button>
+            <button id="sellToggleBtn" onclick="setAction('SELL')" 
+                    class="py-2.5 rounded-lg border border-slate-700 bg-slate-900 text-slate-400 font-semibold text-sm transition hover:bg-slate-800">
+              SELL
+            </button>
+          </div>
+        </div>
+
+        <!-- Analyze Button -->
+        <button id="analyzeBtn" onclick="runAIAnalysis()" 
+                class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg shadow-blue-600/30 transition flex justify-center items-center gap-2">
+          <span>🤖 Run Gemini AI Analysis</span>
+        </button>
+      </div>
     </div>
 
-    <button class="analyze-btn" onclick="runAnalysis()">Analyze</button>
+    <!-- Right Column: AI Analysis Report & Market Table -->
+    <div class="lg:col-span-7 space-y-6">
+      
+      <!-- AI Output Window -->
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-6 shadow-xl min-h-[350px]">
+        <h2 class="text-lg font-semibold mb-3 text-blue-400 flex items-center justify-between">
+          <span>AI Trading Signal & Technical Assessment</span>
+          <span id="statusIndicator" class="text-xs font-normal px-2.5 py-1 rounded bg-slate-700 text-slate-300">Idle</span>
+        </h2>
+        
+        <div id="aiOutput" class="text-slate-300 leading-relaxed text-sm whitespace-pre-line">
+          Select a stock symbol, specify your desired price, select Buy or Sell, and click <strong class="text-white">Run Gemini AI Analysis</strong> to get live recommendation.
+        </div>
+      </div>
 
-    <div id="result" style="display:none;"></div>
-</div>
+      <!-- Live CSX 12 Stocks Table -->
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-6 shadow-xl">
+        <h3 class="text-md font-semibold text-slate-200 mb-3">CSX Market Trade Summary (12 Listed Stocks)</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-700">
+              <tr>
+                <th class="py-2.5 px-3">Symbol</th>
+                <th class="py-2.5 px-3">Close (KHR)</th>
+                <th class="py-2.5 px-3">High</th>
+                <th class="py-2.5 px-3">Low</th>
+                <th class="py-2.5 px-3">Volume</th>
+              </tr>
+            </thead>
+            <tbody id="marketTableBody" class="divide-y divide-slate-700/50">
+              <!-- Dynamically Populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-<script>
+    </div>
+  </main>
+
+  <script type="module">
+    import { GoogleGenAI } from "@google/genai";
+
+    // 12 Listed Companies on Cambodia Securities Exchange (CSX)
+    const CSX_DATA = {
+      "ABC":  { ticker: "ABC",  close_price: 7660, high: 7740, low: 7520, volume: 338005, pe_ratio: 4.07, pb_ratio: 0.49 },
+      "PWSA": { ticker: "PWSA", close_price: 6400, high: 6420, low: 6360, volume: 9740,   pe_ratio: 5.20, pb_ratio: 0.58 },
+      "PAS":  { ticker: "PAS",  close_price: 12500,high: 12560,low: 12450,volume: 8900,   pe_ratio: 11.2, pb_ratio: 1.15 },
+      "CGSM": { ticker: "CGSM", close_price: 3000, high: 3010, low: 2990, volume: 17631,  pe_ratio: 272.7,pb_ratio: 4.85 },
+      "PPAP": { ticker: "PPAP", close_price: 13400,high: 13450,low: 13300,volume: 5400,   pe_ratio: 8.10, pb_ratio: 0.82 },
+      "PPSP": { ticker: "PPSP", close_price: 2180, high: 2200, low: 2150, volume: 12500,  pe_ratio: 6.50, pb_ratio: 0.71 },
+      "GTI":  { ticker: "GTI",  close_price: 8080, high: 8080, low: 8000, volume: 1202,   pe_ratio: 56.9, pb_ratio: 1.14 },
+      "PEPC": { ticker: "PEPC", close_price: 2540, high: 2550, low: 2530, volume: 1100,   pe_ratio: 9.40, pb_ratio: 0.65 },
+      "DBDE": { ticker: "DBDE", close_price: 2140, high: 2150, low: 2100, volume: 38487,  pe_ratio: 3.84, pb_ratio: 0.87 },
+      "MJQE": { ticker: "MJQE", close_price: 2040, high: 2040, low: 2020, volume: 86749,  pe_ratio: 18.5, pb_ratio: 1.42 },
+      "JSL":  { ticker: "JSL",  close_price: 2020, high: 2030, low: 2010, volume: 2541,   pe_ratio: 0.00, pb_ratio: 10.58 },
+      "PCG":  { ticker: "PCG",  close_price: 3780, high: 3790, low: 3730, volume: 260,    pe_ratio: 14.1, pb_ratio: 0.95 }
+    };
+
     let selectedAction = 'BUY';
 
-    function setAction(action, btn) {
-        selectedAction = action;
-        document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+    // Make functions globally available for HTML inline attributes
+    window.setAction = function(action) {
+      selectedAction = action;
+      const buyBtn = document.getElementById('buyToggleBtn');
+      const sellBtn = document.getElementById('sellToggleBtn');
+
+      if (action === 'BUY') {
+        buyBtn.className = "py-2.5 rounded-lg border border-emerald-500/50 bg-emerald-500/10 text-emerald-400 font-semibold text-sm transition hover:bg-emerald-500/20";
+        sellBtn.className = "py-2.5 rounded-lg border border-slate-700 bg-slate-900 text-slate-400 font-semibold text-sm transition hover:bg-slate-800";
+      } else {
+        sellBtn.className = "py-2.5 rounded-lg border border-red-500/50 bg-red-500/10 text-red-400 font-semibold text-sm transition hover:bg-red-500/20";
+        buyBtn.className = "py-2.5 rounded-lg border border-slate-700 bg-slate-900 text-slate-400 font-semibold text-sm transition hover:bg-slate-800";
+      }
+    };
+
+    window.saveApiKey = function() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      if (key) {
+        localStorage.setItem('GEMINI_API_KEY', key);
+        alert('API Key saved successfully!');
+      }
+    };
+
+    window.onStockChange = function() {
+      const symbol = document.getElementById('tickerSelect').value;
+      const stock = CSX_DATA[symbol];
+      if (!stock) return;
+
+      document.getElementById('badgeSymbol').innerText = stock.ticker;
+      document.getElementById('badgePrice').innerText = `${stock.close_price.toLocaleString()} KHR`;
+      document.getElementById('badgeRange').innerText = `${stock.low.toLocaleString()} - ${stock.high.toLocaleString()} KHR`;
+      document.getElementById('badgeVolume').innerText = `${stock.volume.toLocaleString()} shares`;
+      document.getElementById('badgePE').innerText = stock.pe_ratio || 'N/A';
+      document.getElementById('badgePB').innerText = stock.pb_ratio || 'N/A';
+      
+      document.getElementById('targetPriceInput').value = stock.close_price;
+      document.getElementById('stockBadge').classList.remove('hidden');
+    };
+
+    function populateUI() {
+      const select = document.getElementById('tickerSelect');
+      const tbody = document.getElementById('marketTableBody');
+
+      // Populate Key Input if stored
+      const savedKey = localStorage.getItem('GEMINI_API_KEY');
+      if (savedKey) {
+        document.getElementById('apiKeyInput').value = savedKey;
+      }
+
+      Object.keys(CSX_DATA).forEach(symbol => {
+        // Dropdown option
+        const opt = document.createElement('option');
+        opt.value = symbol;
+        opt.textContent = `${symbol} - ${CSX_DATA[symbol].close_price.toLocaleString()} KHR`;
+        select.appendChild(opt);
+
+        // Table row
+        const row = document.createElement('tr');
+        row.className = "hover:bg-slate-700/30 transition";
+        row.innerHTML = `
+          <td class="py-2.5 px-3 font-bold text-white">${symbol}</td>
+          <td class="py-2.5 px-3 font-mono text-emerald-400">${CSX_DATA[symbol].close_price.toLocaleString()}</td>
+          <td class="py-2.5 px-3 font-mono">${CSX_DATA[symbol].high.toLocaleString()}</td>
+          <td class="py-2.5 px-3 font-mono">${CSX_DATA[symbol].low.toLocaleString()}</td>
+          <td class="py-2.5 px-3 font-mono text-slate-400">${CSX_DATA[symbol].volume.toLocaleString()}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      window.onStockChange();
     }
 
-    async function runAnalysis() {
-        const ticker = document.getElementById('ticker').value;
-        const price = document.getElementById('price').value;
-        const resultDiv = document.getElementById('result');
+    window.runAIAnalysis = async function() {
+      const apiKey = localStorage.getItem('GEMINI_API_KEY') || document.getElementById('apiKeyInput').value.trim();
+      
+      if (!apiKey) {
+        alert("Please enter your Gemini API Key in the top right header.");
+        return;
+      }
 
-        if (!price) {
-            alert('Please enter your preferred price.');
-            return;
-        }
+      const symbol = document.getElementById('tickerSelect').value;
+      const targetPrice = parseFloat(document.getElementById('targetPriceInput').value);
+      const stockInfo = CSX_DATA[symbol];
+      const outputDiv = document.getElementById('aiOutput');
+      const statusInd = document.getElementById('statusIndicator');
 
-        resultDiv.style.display = 'block';
-        resultDiv.innerText = 'Analyzing market data via CSX and Gemini...';
+      if (!targetPrice || targetPrice <= 0) {
+        alert("Please enter a valid price.");
+        return;
+      }
 
-        try {
-            const res = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticker, price, action: selectedAction })
-            });
+      statusInd.innerText = "Analyzing...";
+      statusInd.className = "text-xs font-normal px-2.5 py-1 rounded bg-yellow-500/20 text-yellow-300 animate-pulse";
+      outputDiv.innerHTML = "<em>Analyzing technical indicators and fundamental metrics...</em>";
 
-            const data = await res.json();
-            if (data.error) {
-                resultDiv.innerText = 'Error: ' + data.error;
-            } else {
-                resultDiv.innerText = data.analysis;
-            }
-        } catch (err) {
-            resultDiv.innerText = 'Error connecting to server.';
-        }
-    }
-</script>
+      try {
+        const ai = new GoogleGenAI({ apiKey: apiKey });
+        
+        const prompt = `
+        You are an expert quantitative and fundamental financial analyst for the Cambodia Securities Exchange (CSX).
+        
+        Analyze stock '${symbol}' with the following market details:
+        - Current CSX Market Close Price: ${stockInfo.close_price} KHR
+        - Session High / Low: ${stockInfo.high} KHR / ${stockInfo.low} KHR
+        - Trading Volume: ${stockInfo.volume}
+        - P/E Ratio: ${stockInfo.pe_ratio}
+        - P/B Ratio: ${stockInfo.pb_ratio}
 
+        USER INTENT:
+        - Desired Action: ${selectedAction}
+        - User Target Price: ${targetPrice} KHR
+
+        PROVIDE A STRUCTURED RESPONSE:
+        1. RECOMMENDATION: Clear bold header [BUY], [SELL], or [HOLD].
+        2. PRICE SPREAD EVALUATION: Compare target price ${targetPrice} KHR vs current ${stockInfo.close_price} KHR.
+        3. TECHNICAL ANALYSIS: Evaluate entry level, order book depth on CSX, session high/low bounds.
+        4. FUNDAMENTAL ANALYSIS: Analyze P/E (${stockInfo.pe_ratio}) and P/B (${stockInfo.pb_ratio}) valuation relative to CSX averages.
+        `;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+        });
+
+        outputDiv.innerText = response.text;
+        statusInd.innerText = "Completed";
+        statusInd.className = "text-xs font-normal px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300";
+
+      } catch (err) {
+        outputDiv.innerHTML = `<span class="text-red-400">Error generating analysis: ${err.message}</span>`;
+        statusInd.innerText = "Error";
+        statusInd.className = "text-xs font-normal px-2.5 py-1 rounded bg-red-500/20 text-red-300";
+      }
+    };
+
+    // Initialize UI on load
+    document.addEventListener("DOMContentLoaded", populateUI);
+  </script>
 </body>
 </html>

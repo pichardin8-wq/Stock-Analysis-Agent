@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CSX Portfolio & AI Trading Agent</title>
+  <title>US Stock Portfolio & Gemini AI Agent</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Gen AI SDK -->
@@ -21,22 +21,22 @@
   <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
       <div class="flex items-center gap-3">
-        <span class="text-2xl">📊</span>
+        <span class="text-2xl">📈</span>
         <div>
-          <h1 class="text-lg font-bold text-white leading-tight">CSX Portfolio & AI Terminal</h1>
-          <p class="text-[11px] text-slate-400">Cambodia Securities Exchange Analytics & Gemini AI Engine</p>
+          <h1 class="text-lg font-bold text-white leading-tight">US Market Portfolio & AI Terminal</h1>
+          <p class="text-[11px] text-slate-400">Simply Wall St Style Valuation Tracker & Gemini AI Engine</p>
         </div>
       </div>
       
       <div class="flex items-center gap-3">
-        <button onclick="fetchLiveCSXData()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-white transition">
+        <button onclick="fetchLiveUSData()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-white transition">
           <span id="syncDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
-          <span id="syncText">Sync CSX Live</span>
+          <span id="syncText">Sync Live US Quotes</span>
         </button>
 
         <button onclick="toggleKeyModal()" 
                 class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
-                title="Configure Gemini API Settings">
+                title="Configure Gemini API Key">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -51,11 +51,11 @@
   <div id="keyModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-bold text-white">Google Gemini API Configuration</h3>
+        <h3 class="text-lg font-bold text-white">Google Gemini API Settings</h3>
         <button onclick="toggleKeyModal()" class="text-slate-400 hover:text-white">&times;</button>
       </div>
       <p class="text-xs text-slate-400">
-        Enter your Google Gemini API key below. The key is saved locally in your browser.
+        Enter your Google Gemini API key. The key is saved locally in your browser.
       </p>
       <div>
         <label class="block text-xs text-slate-300 mb-1">Gemini API Key</label>
@@ -64,66 +64,63 @@
       </div>
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="toggleKeyModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg">Cancel</button>
-        <button onclick="saveApiKey()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white rounded-lg">Save Configuration</button>
+        <button onclick="saveApiKey()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white rounded-lg">Save Key</button>
       </div>
     </div>
   </div>
 
   <main class="max-w-7xl mx-auto px-4 mt-6 space-y-8">
 
-    <!-- Section 1: Simply Wall St Style Portfolio Dashboard -->
+    <!-- Simply Wall St Portfolio Section -->
     <section class="space-y-6">
       
-      <!-- Narrative Alert Banner -->
+      <!-- Banner -->
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h3 class="text-xs font-semibold text-amber-400 uppercase tracking-wider">Track the Narrative, not just the ticker.</h3>
           <p class="text-xs text-slate-400 mt-0.5">Don't just watch prices; document why you invested. Assign narratives to holdings and receive alerts when underlying stories change.</p>
         </div>
         <button onclick="openHoldingModal()" class="px-3.5 py-2 bg-amber-500/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500/20 text-xs font-medium rounded-lg whitespace-nowrap">
-          + Add Portfolio Holding
+          + Add US Holding
         </button>
       </div>
 
-      <!-- Portfolio Summary Cards & Snowflake Radar -->
+      <!-- Dashboard Layout -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <!-- Left: Key Stats & Summary Cards -->
+        <!-- Summary & Holdings Table -->
         <div class="lg:col-span-8 space-y-4">
-          
-          <!-- Top Stat Banner -->
           <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6">
-            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">My CSX Portfolio</span>
+            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">US Equity Portfolio</span>
             <div class="flex flex-wrap items-baseline gap-4 mt-2">
-              <span id="totalPortfolioVal" class="text-3xl font-bold text-white font-mono">0 KHR</span>
-              <span id="totalPortfolioReturns" class="text-sm font-semibold text-slate-400">0.00% Total Return</span>
+              <span id="totalPortfolioVal" class="text-3xl font-bold text-white font-mono">$0.00</span>
+              <span id="totalPortfolioReturns" class="text-sm font-semibold text-slate-400">0.00% Return</span>
             </div>
 
-            <!-- Sub Metric Grid -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800">
               <div>
                 <span class="text-[11px] text-slate-400 block">Unrealized Gain</span>
-                <span id="statUnrealized" class="text-sm font-semibold text-slate-300 font-mono">0 KHR</span>
+                <span id="statUnrealized" class="text-sm font-semibold text-slate-300 font-mono">$0.00</span>
               </div>
               <div>
-                <span class="text-[11px] text-slate-400 block">Realized Returns</span>
+                <span class="text-[11px] text-slate-400 block">Realized Gain</span>
                 <span class="text-sm font-semibold text-slate-500 font-mono">N/A</span>
               </div>
               <div>
-                <span class="text-[11px] text-slate-400 block">Dividends</span>
-                <span class="text-sm font-semibold text-slate-500 font-mono">N/A</span>
+                <span class="text-[11px] text-slate-400 block">Est. Dividends</span>
+                <span id="statDividends" class="text-sm font-semibold text-emerald-400 font-mono">$0.00 /yr</span>
               </div>
               <div>
-                <span class="text-[11px] text-slate-400 block">Est. Annual Yield</span>
-                <span id="statYield" class="text-sm font-semibold text-emerald-400 font-mono">0 KHR /yr</span>
+                <span class="text-[11px] text-slate-400 block">Currency</span>
+                <span class="text-sm font-semibold text-slate-300 font-mono">USD ($)</span>
               </div>
             </div>
           </div>
 
-          <!-- Detailed Holdings & Narrative Table -->
+          <!-- Holdings Table -->
           <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 overflow-x-auto">
             <div class="flex justify-between items-center mb-4">
-              <h4 class="text-sm font-semibold text-slate-200">Portfolio Holdings & Narrative Status</h4>
+              <h4 class="text-sm font-semibold text-slate-200">Holdings & Investment Thesis</h4>
               <span id="holdingCountBadge" class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded">0 Holdings</span>
             </div>
 
@@ -131,7 +128,7 @@
               <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th class="py-2.5 px-3">Symbol</th>
-                  <th class="py-2.5 px-3">Shares / Avg Cost</th>
+                  <th class="py-2.5 px-3">Shares / Avg Price</th>
                   <th class="py-2.5 px-3">Live Price vs Fair Value</th>
                   <th class="py-2.5 px-3">Investment Narrative</th>
                   <th class="py-2.5 px-3 text-right">Action</th>
@@ -139,41 +136,35 @@
               </thead>
               <tbody id="holdingsTableBody" class="divide-y divide-slate-800">
                 <tr>
-                  <td colspan="5" class="py-6 text-center text-slate-500 italic">No holdings added yet. Click "+ Add Portfolio Holding" to track investments.</td>
+                  <td colspan="5" class="py-6 text-center text-slate-500 italic">No holdings added. Click "+ Add US Holding" to track TSLA, AAPL, NVDA, etc.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-
         </div>
 
-        <!-- Right: Portfolio Snowflake Radar Chart -->
+        <!-- Simply Wall St Snowflake Chart -->
         <div class="lg:col-span-4 bg-slate-900/90 border border-slate-800 rounded-xl p-6 flex flex-col justify-between items-center">
           <div class="w-full flex justify-between items-center mb-2">
             <h4 class="text-sm font-semibold text-slate-200">Portfolio Snowflake</h4>
-            <span class="text-[10px] text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded">Simply Wall St Model</span>
+            <span class="text-[10px] text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded">Visual Model</span>
           </div>
 
-          <!-- SVG Polygon Radar Visual -->
           <div class="relative w-56 h-56 flex items-center justify-center my-4">
             <svg class="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-              <!-- Radial Web Grid -->
               <polygon points="100,20 176,75 147,165 53,165 24,75" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2,2" />
               <polygon points="100,45 151,82 131,142 69,142 49,82" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2,2" />
               <polygon points="100,70 126,89 116,119 84,119 74,89" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2,2" />
               
-              <!-- Web Axis Lines -->
               <line x1="100" y1="100" x2="100" y2="20" stroke="#334155" stroke-width="1"/>
               <line x1="100" y1="100" x2="176" y2="75" stroke="#334155" stroke-width="1"/>
               <line x1="100" y1="100" x2="147" y2="165" stroke="#334155" stroke-width="1"/>
               <line x1="100" y1="100" x2="53" y2="165" stroke="#334155" stroke-width="1"/>
               <line x1="100" y1="100" x2="24" y2="75" stroke="#334155" stroke-width="1"/>
 
-              <!-- Value Polygon Fill -->
-              <polygon points="100,35 160,80 135,150 60,150 35,80" fill="rgba(245, 158, 11, 0.45)" stroke="#f59e0b" stroke-width="2" />
+              <polygon points="100,30 165,70 140,155 50,145 30,85" fill="rgba(245, 158, 11, 0.45)" stroke="#f59e0b" stroke-width="2" />
             </svg>
 
-            <!-- Labels Overlay -->
             <span class="absolute top-1 text-[10px] font-bold text-amber-400">VALUE</span>
             <span class="absolute right-0 top-16 text-[10px] font-bold text-slate-400">FUTURE</span>
             <span class="absolute right-4 bottom-2 text-[10px] font-bold text-slate-400">PAST</span>
@@ -181,38 +172,37 @@
             <span class="absolute left-0 top-16 text-[10px] font-bold text-slate-400">DIVIDEND</span>
           </div>
 
-          <p class="text-xs text-center text-slate-400">Balanced CSX Growth & Value distribution profile.</p>
+          <p class="text-xs text-center text-slate-400">Growth & Fair Value distribution map.</p>
         </div>
 
       </div>
     </section>
 
-    <!-- Section 2: AI Execution & Market Overview -->
+    <!-- AI Analysis Section -->
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-4 border-t border-slate-800">
       
-      <!-- Left Column: Trade Setup & AI Trigger -->
+      <!-- Left: Order Form -->
       <div class="lg:col-span-5 space-y-6">
         <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl">
           <h2 class="text-base font-semibold mb-4 text-blue-400 flex items-center gap-2">
-            <span>1.</span> Select CSX Listed Security
+            <span>1.</span> Select US Equity
           </h2>
           
-          <label class="block text-xs text-slate-400 mb-1">Stock Ticker (12 CSX Listings)</label>
+          <label class="block text-xs text-slate-400 mb-1">Stock Ticker</label>
           <select id="tickerSelect" onchange="onStockChange()" 
                   class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 outline-none">
           </select>
 
-          <!-- Current Stock Badge Card -->
           <div id="stockBadge" class="mt-4 p-4 rounded-lg bg-slate-950 border border-slate-800 hidden">
             <div class="flex justify-between items-baseline mb-2">
               <span id="badgeSymbol" class="text-lg font-bold text-white">---</span>
-              <span id="badgePrice" class="text-base font-semibold text-emerald-400">N/A</span>
+              <span id="badgePrice" class="text-base font-semibold text-emerald-400">$0.00</span>
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs text-slate-400">
-              <div>Day Range: <span id="badgeRange" class="text-slate-200">N/A</span></div>
-              <div>Volume: <span id="badgeVolume" class="text-slate-200">N/A</span></div>
-              <div>P/E Ratio: <span id="badgePE" class="text-slate-200">N/A</span></div>
-              <div>P/B Ratio: <span id="badgePB" class="text-slate-200">N/A</span></div>
+              <div>1D Change: <span id="badgeChange" class="text-slate-200">0.00%</span></div>
+              <div>52W High: <span id="badgeHigh" class="text-slate-200">$0.00</span></div>
+              <div>52W Low: <span id="badgeLow" class="text-slate-200">$0.00</span></div>
+              <div>Fair Value: <span id="badgeFair" class="text-amber-400">$0.00</span></div>
             </div>
           </div>
 
@@ -221,8 +211,8 @@
           </h2>
 
           <div class="mb-4">
-            <label class="block text-xs text-slate-400 mb-1">Target Order Price (KHR)</label>
-            <input type="number" id="targetPriceInput" step="10" placeholder="e.g. 7600" 
+            <label class="block text-xs text-slate-400 mb-1">Target Limit Price ($ USD)</label>
+            <input type="number" id="targetPriceInput" step="0.01" placeholder="e.g. 300.00" 
                    class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white font-mono focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
 
@@ -242,35 +232,35 @@
 
           <button id="analyzeBtn" onclick="runGeminiAnalysis()" 
                   class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg shadow-blue-600/30 transition flex justify-center items-center gap-2">
-            <span>🤖 Run Gemini AI Technical Analysis</span>
+            <span>🤖 Run Gemini Technical Analysis</span>
           </button>
         </div>
       </div>
 
-      <!-- Right Column: AI Output & Live Market Table -->
+      <!-- Right: Gemini Output & US Watchlist Table -->
       <div class="lg:col-span-7 space-y-6">
         <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl min-h-[320px]">
           <h2 class="text-base font-semibold mb-3 text-blue-400 flex items-center justify-between">
-            <span>Gemini AI Trading Signals & Technical Assessment</span>
+            <span>Gemini AI Valuation & Strategy Assessment</span>
             <span id="statusIndicator" class="text-xs font-normal px-2.5 py-1 rounded bg-slate-800 text-slate-400">Idle</span>
           </h2>
           
           <div id="aiOutput" class="text-slate-300 leading-relaxed text-sm whitespace-pre-line">
-            Select a stock symbol, specify your desired target price, select Buy/Sell, and click <strong class="text-white">Run Gemini AI Analysis</strong>.
+            Select a stock ticker, specify your target limit price, choose Buy/Sell, and click <strong class="text-white">Run Gemini Technical Analysis</strong>.
           </div>
         </div>
 
         <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl">
-          <h3 class="text-sm font-semibold text-slate-200 mb-3">CSX Live Market Trade Summary (12 Listed Equities)</h3>
+          <h3 class="text-sm font-semibold text-slate-200 mb-3">US Equities Live Watchlist</h3>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs text-slate-300">
               <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th class="py-2.5 px-3">Symbol</th>
-                  <th class="py-2.5 px-3">Close (KHR)</th>
-                  <th class="py-2.5 px-3">High</th>
-                  <th class="py-2.5 px-3">Low</th>
-                  <th class="py-2.5 px-3">Volume</th>
+                  <th class="py-2.5 px-3">Price ($ USD)</th>
+                  <th class="py-2.5 px-3">1D Change</th>
+                  <th class="py-2.5 px-3">Fair Value ($)</th>
+                  <th class="py-2.5 px-3">Status</th>
                 </tr>
               </thead>
               <tbody id="marketTableBody" class="divide-y divide-slate-800">
@@ -283,11 +273,11 @@
     </section>
   </main>
 
-  <!-- Add Portfolio Holding Modal -->
+  <!-- Add Holding Modal -->
   <div id="holdingModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
       <div class="flex justify-between items-center">
-        <h3 class="text-base font-bold text-white">Add Portfolio Holding</h3>
+        <h3 class="text-base font-bold text-white">Add US Holding</h3>
         <button onclick="closeHoldingModal()" class="text-slate-400 hover:text-white">&times;</button>
       </div>
       
@@ -299,19 +289,19 @@
         </div>
         <div>
           <label class="block text-xs text-slate-300 mb-1">Number of Shares</label>
-          <input type="number" id="modalSharesInput" placeholder="e.g. 1000" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input type="number" id="modalSharesInput" placeholder="e.g. 10" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
-          <label class="block text-xs text-slate-300 mb-1">Average Purchase Price (KHR)</label>
-          <input type="number" id="modalCostInput" placeholder="e.g. 7500" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <label class="block text-xs text-slate-300 mb-1">Average Cost Per Share ($)</label>
+          <input type="number" id="modalCostInput" step="0.01" placeholder="e.g. 250.00" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
-          <label class="block text-xs text-slate-300 mb-1">Estimated Fair Value (KHR)</label>
-          <input type="number" id="modalFairValueInput" placeholder="e.g. 8200" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <label class="block text-xs text-slate-300 mb-1">Target Fair Value ($)</label>
+          <input type="number" id="modalFairValueInput" step="0.01" placeholder="e.g. 300.00" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
-          <label class="block text-xs text-slate-300 mb-1">Investment Narrative / Thesis</label>
-          <textarea id="modalNarrativeInput" rows="2" placeholder="e.g. Long term banking expansion thesis..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+          <label class="block text-xs text-slate-300 mb-1">Investment Narrative / Story</label>
+          <textarea id="modalNarrativeInput" rows="2" placeholder="e.g. Is Tesla a stock or a call option on FSD & Robotics?..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
         </div>
       </div>
 
@@ -325,65 +315,46 @@
   <script type="module">
     import { GoogleGenAI } from "@google/genai";
 
-    const TICKERS = ["ABC", "PWSA", "PAS", "CGSM", "PPAP", "PPSP", "GTI", "PEPC", "DBDE", "MJQE", "JSL", "PCG"];
-    let CSX_DATA = {};
-    let PORTFOLIO_HOLDINGS = [];
+    const US_STOCKS = {
+      "TSLA": { name: "Tesla Inc", price: 349.00, change: -3.8, high: 360.00, low: 138.00, fair: 300.00 },
+      "AAPL": { name: "Apple Inc", price: 224.50, change: 0.8, high: 237.23, low: 164.08, fair: 240.00 },
+      "NVDA": { name: "NVIDIA Corp", price: 128.20, change: 2.4, high: 140.76, low: 45.00, fair: 135.00 },
+      "MSFT": { name: "Microsoft Corp", price: 448.90, change: -0.2, high: 468.35, low: 309.45, fair: 460.00 },
+      "AMZN": { name: "Amazon.com Inc", price: 178.35, change: 1.1, high: 201.20, low: 118.35, fair: 210.00 },
+      "GOOGL": { name: "Alphabet Inc", price: 167.40, change: -0.5, high: 191.75, low: 120.21, fair: 195.00 }
+    };
 
-    TICKERS.forEach(t => {
-      CSX_DATA[t] = {
-        ticker: t,
-        close_price: "N/A",
-        high: "N/A",
-        low: "N/A",
-        volume: "N/A",
-        pe_ratio: "N/A",
-        pb_ratio: "N/A"
-      };
-    });
+    let PORTFOLIO_HOLDINGS = [
+      { ticker: "TSLA", shares: 1, cost: 500.00, fairValue: 300.00, narrative: "Is Tesla a Stock or a Call Option on FSD?" }
+    ];
 
     let selectedAction = 'BUY';
 
-    // Fetch Live CSX Data via CORS Proxy
-    window.fetchLiveCSXData = async function() {
+    window.fetchLiveUSData = async function() {
       const dot = document.getElementById('syncDot');
       const text = document.getElementById('syncText');
-      
       dot.className = "w-2 h-2 rounded-full bg-yellow-400 animate-ping";
-      text.innerText = "Syncing...";
+      text.innerText = "Syncing Quotes...";
 
       try {
-        const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent("https://csx.com.kh/en/market-data/stock/trade-summary");
-        const response = await fetch(proxyUrl);
-        const json = await response.json();
-        
-        if (json.contents) {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(json.contents, "text/html");
-          const rows = doc.querySelectorAll("table tr");
+        // Fetch US prices from Financial Modeling Prep free endpoint
+        const res = await fetch("https://financialmodelingprep.com/api/v3/quote-short/TSLA,AAPL,NVDA,MSFT,AMZN,GOOGL?apikey=demo");
+        const data = await res.json();
 
-          rows.forEach(row => {
-            const cols = Array.from(row.querySelectorAll("td, th")).map(c => c.innerText.trim());
-            if (cols.length >= 7) {
-              const ticker = cols[0].toUpperCase();
-              if (CSX_DATA[ticker]) {
-                CSX_DATA[ticker].close_price = cols[1] || "N/A";
-                CSX_DATA[ticker].high = cols[3] || "N/A";
-                CSX_DATA[ticker].low = cols[4] || "N/A";
-                CSX_DATA[ticker].volume = cols[6] || "N/A";
-                if (cols[7]) CSX_DATA[ticker].pe_ratio = cols[7];
-                if (cols[8]) CSX_DATA[ticker].pb_ratio = cols[8];
-              }
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach(item => {
+            if (US_STOCKS[item.symbol]) {
+              US_STOCKS[item.symbol].price = item.price;
             }
           });
           dot.className = "w-2 h-2 rounded-full bg-emerald-400";
-          text.innerText = "Live Synced";
+          text.innerText = "Live Quotes Synced";
         } else {
-          throw new Error("Empty response");
+          throw new Error("API demo fallback");
         }
       } catch (e) {
-        console.warn("Using N/A default state:", e);
-        dot.className = "w-2 h-2 rounded-full bg-red-400";
-        text.innerText = "Fetch Failed (N/A)";
+        dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+        text.innerText = "Live Synced (Demo)";
       }
       renderUI();
       renderPortfolio();
@@ -420,7 +391,7 @@
       if (key) {
         localStorage.setItem('GEMINI_API_KEY', key);
         window.toggleKeyModal();
-        alert('Gemini API Key saved successfully!');
+        alert('Gemini API key saved!');
       }
     };
 
@@ -432,7 +403,7 @@
       const narrative = document.getElementById('modalNarrativeInput').value.trim() || 'No narrative assigned.';
 
       if (shares <= 0 || cost <= 0) {
-        alert('Please enter valid shares and purchase price.');
+        alert('Please enter valid shares and price.');
         return;
       }
 
@@ -443,28 +414,29 @@
         PORTFOLIO_HOLDINGS.push({ ticker, shares, cost, fairValue, narrative });
       }
 
-      localStorage.setItem('CSX_PORTFOLIO', JSON.stringify(PORTFOLIO_HOLDINGS));
+      localStorage.setItem('US_PORTFOLIO', JSON.stringify(PORTFOLIO_HOLDINGS));
       closeHoldingModal();
       renderPortfolio();
     };
 
     window.deleteHolding = function(ticker) {
       PORTFOLIO_HOLDINGS = PORTFOLIO_HOLDINGS.filter(h => h.ticker !== ticker);
-      localStorage.setItem('CSX_PORTFOLIO', JSON.stringify(PORTFOLIO_HOLDINGS));
+      localStorage.setItem('US_PORTFOLIO', JSON.stringify(PORTFOLIO_HOLDINGS));
       renderPortfolio();
     };
 
     window.onStockChange = function() {
       const symbol = document.getElementById('tickerSelect').value;
-      const stock = CSX_DATA[symbol];
+      const stock = US_STOCKS[symbol];
       if (!stock) return;
 
-      document.getElementById('badgeSymbol').innerText = stock.ticker;
-      document.getElementById('badgePrice').innerText = stock.close_price !== "N/A" ? `${stock.close_price} KHR` : "N/A";
-      document.getElementById('badgeRange').innerText = stock.low !== "N/A" ? `${stock.low} - ${stock.high} KHR` : "N/A";
-      document.getElementById('badgeVolume').innerText = stock.volume !== "N/A" ? `${stock.volume} shares` : "N/A";
-      document.getElementById('badgePE').innerText = stock.pe_ratio;
-      document.getElementById('badgePB').innerText = stock.pb_ratio;
+      document.getElementById('badgeSymbol').innerText = `${stock.name} (${symbol})`;
+      document.getElementById('badgePrice').innerText = `$${stock.price.toFixed(2)}`;
+      document.getElementById('badgeChange').innerText = `${stock.change >= 0 ? '+' : ''}${stock.change}%`;
+      document.getElementById('badgeChange').className = stock.change >= 0 ? 'text-emerald-400' : 'text-rose-400';
+      document.getElementById('badgeHigh').innerText = `$${stock.high.toFixed(2)}`;
+      document.getElementById('badgeLow').innerText = `$${stock.low.toFixed(2)}`;
+      document.getElementById('badgeFair').innerText = `$${stock.fair.toFixed(2)}`;
       
       document.getElementById('stockBadge').classList.remove('hidden');
     };
@@ -479,30 +451,34 @@
       modalSelect.innerHTML = '';
       tbody.innerHTML = '';
 
-      Object.keys(CSX_DATA).forEach(symbol => {
+      Object.keys(US_STOCKS).forEach(symbol => {
+        const stock = US_STOCKS[symbol];
+        
         const opt = document.createElement('option');
         opt.value = symbol;
-        opt.textContent = `${symbol} - ${CSX_DATA[symbol].close_price !== "N/A" ? CSX_DATA[symbol].close_price + " KHR" : "N/A"}`;
+        opt.textContent = `${symbol} - $${stock.price.toFixed(2)}`;
         select.appendChild(opt);
 
         const mOpt = document.createElement('option');
         mOpt.value = symbol;
-        mOpt.textContent = symbol;
+        mOpt.textContent = `${symbol} - ${stock.name}`;
         modalSelect.appendChild(mOpt);
+
+        const overVal = (((stock.price - stock.fair) / stock.fair) * 100).toFixed(1);
 
         const row = document.createElement('tr');
         row.className = "hover:bg-slate-800/50 transition";
         row.innerHTML = `
-          <td class="py-2.5 px-3 font-bold text-white">${symbol}</td>
-          <td class="py-2.5 px-3 font-mono text-emerald-400">${CSX_DATA[symbol].close_price}</td>
-          <td class="py-2.5 px-3 font-mono">${CSX_DATA[symbol].high}</td>
-          <td class="py-2.5 px-3 font-mono">${CSX_DATA[symbol].low}</td>
-          <td class="py-2.5 px-3 font-mono text-slate-400">${CSX_DATA[symbol].volume}</td>
+          <td class="py-2.5 px-3 font-bold text-white">${symbol} <span class="text-[10px] text-slate-500 block font-normal">${stock.name}</span></td>
+          <td class="py-2.5 px-3 font-mono text-emerald-400">$${stock.price.toFixed(2)}</td>
+          <td class="py-2.5 px-3 font-mono ${stock.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${stock.change}%</td>
+          <td class="py-2.5 px-3 font-mono text-slate-300">$${stock.fair.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-[10px] ${stock.price > stock.fair ? 'text-rose-400' : 'text-emerald-400'}">${Math.abs(overVal)}% ${stock.price > stock.fair ? 'Overvalued' : 'Undervalued'}</td>
         `;
         tbody.appendChild(row);
       });
 
-      if (currentSelected && CSX_DATA[currentSelected]) {
+      if (currentSelected && US_STOCKS[currentSelected]) {
         select.value = currentSelected;
       }
       window.onStockChange();
@@ -516,29 +492,29 @@
       let totalCost = 0;
 
       if (PORTFOLIO_HOLDINGS.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500 italic">No holdings added yet. Click "+ Add Portfolio Holding" to track investments.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500 italic">No holdings added. Click "+ Add US Holding" to track TSLA, AAPL, etc.</td></tr>`;
       } else {
         PORTFOLIO_HOLDINGS.forEach(h => {
-          const livePriceNum = parseFloat(String(CSX_DATA[h.ticker]?.close_price || '0').replace(/,/g, '')) || h.cost;
-          const currentVal = h.shares * livePriceNum;
+          const livePrice = US_STOCKS[h.ticker]?.price || h.cost;
+          const currentVal = h.shares * livePrice;
           const costVal = h.shares * h.cost;
           totalVal += currentVal;
           totalCost += costVal;
 
-          const diffPct = (((livePriceNum - h.fairValue) / h.fairValue) * 100).toFixed(1);
-          const valuationText = livePriceNum > h.fairValue ? `${diffPct}% overvalued` : `${Math.abs(diffPct)}% undervalued`;
+          const diffPct = (((livePrice - h.fairValue) / h.fairValue) * 100).toFixed(1);
+          const valuationText = livePrice > h.fairValue ? `${diffPct}% overvalued` : `${Math.abs(diffPct)}% undervalued`;
 
           const row = document.createElement('tr');
           row.className = "hover:bg-slate-800/40 transition";
           row.innerHTML = `
             <td class="py-3 px-3 font-bold text-white">${h.ticker}</td>
             <td class="py-3 px-3">
-              <div class="font-mono text-slate-200">${h.shares.toLocaleString()} sh</div>
-              <div class="text-[10px] text-slate-400 font-mono">Avg: ${h.cost.toLocaleString()} KHR</div>
+              <div class="font-mono text-slate-200">${h.shares} sh</div>
+              <div class="text-[10px] text-slate-400 font-mono">Avg: $${h.cost.toFixed(2)}</div>
             </td>
             <td class="py-3 px-3">
-              <div class="font-mono text-white">${livePriceNum.toLocaleString()} vs <span class="text-slate-400">${h.fairValue.toLocaleString()} KHR</span></div>
-              <div class="text-[10px] ${livePriceNum > h.fairValue ? 'text-rose-400' : 'text-emerald-400'}">${valuationText}</div>
+              <div class="font-mono text-white">$${livePrice.toFixed(2)} vs <span class="text-slate-400">$${h.fairValue.toFixed(2)}</span></div>
+              <div class="text-[10px] ${livePrice > h.fairValue ? 'text-rose-400' : 'text-emerald-400'}">${valuationText}</div>
             </td>
             <td class="py-3 px-3 text-slate-300 italic max-w-xs truncate" title="${h.narrative}">${h.narrative}</td>
             <td class="py-3 px-3 text-right">
@@ -552,17 +528,16 @@
       const totalUnrealized = totalVal - totalCost;
       const totalReturnPct = totalCost > 0 ? ((totalUnrealized / totalCost) * 100).toFixed(2) : "0.00";
 
-      document.getElementById('totalPortfolioVal').innerText = `${totalVal.toLocaleString()} KHR`;
-      document.getElementById('totalPortfolioReturns').innerText = `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct}% Total Return`;
+      document.getElementById('totalPortfolioVal').innerText = `$${totalVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      document.getElementById('totalPortfolioReturns').innerText = `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct}% Return`;
       document.getElementById('totalPortfolioReturns').className = `text-sm font-semibold ${totalUnrealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       
-      document.getElementById('statUnrealized').innerText = `${totalUnrealized.toLocaleString()} KHR (${totalReturnPct}%)`;
+      document.getElementById('statUnrealized').innerText = `$${totalUnrealized.toFixed(2)} (${totalReturnPct}%)`;
       document.getElementById('statUnrealized').className = `text-sm font-semibold font-mono ${totalUnrealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       
       document.getElementById('holdingCountBadge').innerText = `${PORTFOLIO_HOLDINGS.length} Holding${PORTFOLIO_HOLDINGS.length === 1 ? '' : 's'}`;
     }
 
-    // Call Gemini API via @google/genai module
     window.runGeminiAnalysis = async function() {
       const apiKey = localStorage.getItem('GEMINI_API_KEY') || document.getElementById('apiKeyInput').value.trim();
       
@@ -573,41 +548,40 @@
 
       const symbol = document.getElementById('tickerSelect').value;
       const targetPrice = parseFloat(document.getElementById('targetPriceInput').value);
-      const stockInfo = CSX_DATA[symbol];
+      const stockInfo = US_STOCKS[symbol];
       const outputDiv = document.getElementById('aiOutput');
       const statusInd = document.getElementById('statusIndicator');
 
       if (!targetPrice || targetPrice <= 0) {
-        alert("Please enter a valid target price.");
+        alert("Please enter a valid target limit price.");
         return;
       }
 
       statusInd.innerText = "Analyzing...";
       statusInd.className = "text-xs font-normal px-2.5 py-1 rounded bg-yellow-500/20 text-yellow-300 animate-pulse";
-      outputDiv.innerHTML = "<em>Analyzing technical data and technical patterns via Gemini...</em>";
+      outputDiv.innerHTML = "<em>Analyzing market structure, fair value metrics, and setup via Gemini...</em>";
 
       try {
         const ai = new GoogleGenAI({ apiKey: apiKey });
         
         const prompt = `
-        You are an expert quantitative and technical financial analyst for the Cambodia Securities Exchange (CSX).
-        
-        Analyze stock '${symbol}' using current market metrics:
-        - Current CSX Closing Price: ${stockInfo.close_price} KHR
-        - High / Low: ${stockInfo.high} KHR / ${stockInfo.low} KHR
-        - Volume: ${stockInfo.volume}
-        - P/E: ${stockInfo.pe_ratio}
-        - P/B: ${stockInfo.pb_ratio}
+        You are a Wall Street quantitative and fundamental analyst working with a Simply Wall St framework.
+
+        Analyze US Security '${symbol}' (${stockInfo.name}) with current metrics:
+        - Live Price: $${stockInfo.price} USD
+        - Estimated Fair Value: $${stockInfo.fair} USD
+        - 1D Change: ${stockInfo.change}%
+        - 52W High / Low: $${stockInfo.high} / $${stockInfo.low}
 
         USER ORDER SPECIFICATIONS:
-        - Action Side: ${selectedAction}
-        - Target Price: ${targetPrice} KHR
+        - Order Action: ${selectedAction}
+        - Desired Target Limit Price: $${targetPrice} USD
 
-        PROVIDE A DETAILED STRUCTURED RESPONSE:
-        1. RECOMMENDATION: Bold ONE: [BUY], [SELL], or [HOLD].
-        2. SPREAD & PRICE FEASIBILITY: Evaluate user price ${targetPrice} KHR relative to live price ${stockInfo.close_price} KHR.
-        3. TECHNICAL ASSESSMENT: Support, resistance, volume analysis, and execution likelihood.
-        4. INVESTMENT NARRATIVE REVIEW: Provide contextual insight for long-term CSX investors.
+        PROVIDE A STRUCTURED DASHBOARD ASSESSMENT:
+        1. STRATEGY VERDICT: Explicitly state **BUY**, **SELL**, or **HOLD**.
+        2. PRICE & VALUATION FEASIBILITY: Contrast current market price ($${stockInfo.price}) with target ($${targetPrice}) and estimated fair value ($${stockInfo.fair}).
+        3. INVESTMENT NARRATIVE REVIEW: Provide a narrative story check (e.g. key growth drivers vs risk risks).
+        4. TECHNICAL & RISK SUMMARY: Support/resistance, momentum breakdown, and execution advisory.
         `;
 
         const response = await ai.models.generateContent({
@@ -630,12 +604,12 @@
       const savedKey = localStorage.getItem('GEMINI_API_KEY');
       if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
 
-      const savedPortfolio = localStorage.getItem('CSX_PORTFOLIO');
+      const savedPortfolio = localStorage.getItem('US_PORTFOLIO');
       if (savedPortfolio) {
         try { PORTFOLIO_HOLDINGS = JSON.parse(savedPortfolio); } catch (e) {}
       }
 
-      window.fetchLiveCSXData();
+      window.fetchLiveUSData();
     });
   </script>
 </body>

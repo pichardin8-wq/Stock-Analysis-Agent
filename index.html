@@ -3,17 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CSX Stock AI Trading Agent</title>
+  <title>CSX Stock AI Trading Agent (Claude Edition)</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Gen AI SDK -->
-  <script type="importmap">
-    {
-      "imports": {
-        "@google/genai": "https://esm.run/@google/genai"
-      }
-    }
-  </script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-12">
 
@@ -24,21 +16,21 @@
         <span class="text-3xl">📈</span>
         <div>
           <h1 class="text-xl font-bold text-white">CSX AI Trading Agent</h1>
-          <p class="text-xs text-slate-400">Cambodia Securities Exchange Real-time Analyzer</p>
+          <p class="text-xs text-slate-400">Cambodia Securities Exchange Real-time Analyzer (Powered by Claude)</p>
         </div>
       </div>
       
       <div class="flex items-center gap-3">
         <!-- Live Sync Status -->
         <button onclick="fetchLiveCSXData()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-white hover:bg-slate-700 transition">
-          <span id="syncDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="syncDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
           <span id="syncText">Sync Prices</span>
         </button>
 
-        <!-- Hidden API Key Settings Modal Trigger -->
+        <!-- API Key Settings Button -->
         <button onclick="toggleKeyModal()" 
                 class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
-                title="Configure API Settings">
+                title="Configure Anthropic API Settings">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -53,15 +45,15 @@
   <div id="keyModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-bold text-white">API Configuration</h3>
+        <h3 class="text-lg font-bold text-white">Anthropic API Configuration</h3>
         <button onclick="toggleKeyModal()" class="text-slate-400 hover:text-white">&times;</button>
       </div>
       <p class="text-xs text-slate-400">
-        Enter your Gemini API key below. The key is stored locally in your browser.
+        Enter your Anthropic Claude API key below (`sk-ant-api...`). The key is stored locally in your browser.
       </p>
       <div>
-        <label class="block text-xs text-slate-300 mb-1">Gemini API Key</label>
-        <input type="password" id="apiKeyInput" placeholder="Paste key here" 
+        <label class="block text-xs text-slate-300 mb-1">Claude API Key</label>
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-api..." 
                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
       <div class="flex justify-end gap-2 pt-2">
@@ -89,13 +81,13 @@
         <div id="stockBadge" class="mt-4 p-4 rounded-lg bg-slate-900/90 border border-slate-700/60 hidden">
           <div class="flex justify-between items-baseline mb-2">
             <span id="badgeSymbol" class="text-xl font-bold text-white">---</span>
-            <span id="badgePrice" class="text-lg font-semibold text-emerald-400">--- KHR</span>
+            <span id="badgePrice" class="text-lg font-semibold text-emerald-400">N/A</span>
           </div>
           <div class="grid grid-cols-2 gap-2 text-xs text-slate-400">
-            <div>Day Range: <span id="badgeRange" class="text-slate-200">---</span></div>
-            <div>Volume: <span id="badgeVolume" class="text-slate-200">---</span></div>
-            <div>Est. P/E Ratio: <span id="badgePE" class="text-slate-200">---</span></div>
-            <div>Est. P/B Ratio: <span id="badgePB" class="text-slate-200">---</span></div>
+            <div>Day Range: <span id="badgeRange" class="text-slate-200">N/A</span></div>
+            <div>Volume: <span id="badgeVolume" class="text-slate-200">N/A</span></div>
+            <div>P/E Ratio: <span id="badgePE" class="text-slate-200">N/A</span></div>
+            <div>P/B Ratio: <span id="badgePB" class="text-slate-200">N/A</span></div>
           </div>
         </div>
 
@@ -123,9 +115,9 @@
           </div>
         </div>
 
-        <button id="analyzeBtn" onclick="runAIAnalysis()" 
+        <button id="analyzeBtn" onclick="runClaudeAnalysis()" 
                 class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg shadow-blue-600/30 transition flex justify-center items-center gap-2">
-          <span>🤖 Run Gemini AI Analysis</span>
+          <span>🤖 Run Claude AI Analysis</span>
         </button>
       </div>
     </div>
@@ -139,7 +131,7 @@
         </h2>
         
         <div id="aiOutput" class="text-slate-300 leading-relaxed text-sm whitespace-pre-line">
-          Select a stock symbol, specify your desired price, select Buy or Sell, and click <strong class="text-white">Run Gemini AI Analysis</strong> to get live recommendation.
+          Select a stock symbol, specify your desired price, select Buy or Sell, and click <strong class="text-white">Run Claude AI Analysis</strong>.
         </div>
       </div>
 
@@ -164,27 +156,26 @@
     </div>
   </main>
 
-  <script type="module">
-    import { GoogleGenAI } from "@google/genai";
+  <script>
+    // Initialize empty CSX data - no hardcoded prices
+    const TICKERS = ["ABC", "PWSA", "PAS", "CGSM", "PPAP", "PPSP", "GTI", "PEPC", "DBDE", "MJQE", "JSL", "PCG"];
+    let CSX_DATA = {};
 
-    let CSX_DATA = {
-      "ABC":  { ticker: "ABC",  close_price: 7660, high: 7740, low: 7520, volume: 338005, pe_ratio: 4.07, pb_ratio: 0.49 },
-      "PWSA": { ticker: "PWSA", close_price: 6500, high: 6520, low: 6460, volume: 9740,   pe_ratio: 5.20, pb_ratio: 0.58 },
-      "PAS":  { ticker: "PAS",  close_price: 15500,high: 15560,low: 15450,volume: 8900,   pe_ratio: 11.2, pb_ratio: 1.15 },
-      "CGSM": { ticker: "CGSM", close_price: 3000, high: 3010, low: 2990, volume: 17631,  pe_ratio: 272.7,pb_ratio: 4.85 },
-      "PPAP": { ticker: "PPAP", close_price: 13400,high: 13450,low: 13300,volume: 5400,   pe_ratio: 8.10, pb_ratio: 0.82 },
-      "PPSP": { ticker: "PPSP", close_price: 1210, high: 1220, low: 1150, volume: 12500,  pe_ratio: 6.50, pb_ratio: 0.71 },
-      "GTI":  { ticker: "GTI",  close_price: 8120, high: 8120, low: 8000, volume: 1202,   pe_ratio: 56.9, pb_ratio: 1.14 },
-      "PEPC": { ticker: "PEPC", close_price: 2540, high: 2550, low: 2530, volume: 1100,   pe_ratio: 9.40, pb_ratio: 0.65 },
-      "DBDE": { ticker: "DBDE", close_price: 2150, high: 2150, low: 2100, volume: 38487,  pe_ratio: 3.84, pb_ratio: 0.87 },
-      "MJQE": { ticker: "MJQE", close_price: 2040, high: 2040, low: 2020, volume: 86749,  pe_ratio: 18.5, pb_ratio: 1.42 },
-      "JSL":  { ticker: "JSL",  close_price: 2020, high: 2030, low: 2010, volume: 2541,   pe_ratio: 0.00, pb_ratio: 10.58 },
-      "PCG":  { ticker: "PCG",  close_price: 3720, high: 3790, low: 3720, volume: 260,    pe_ratio: 14.1, pb_ratio: 0.95 }
-    };
+    TICKERS.forEach(t => {
+      CSX_DATA[t] = {
+        ticker: t,
+        close_price: "N/A",
+        high: "N/A",
+        low: "N/A",
+        volume: "N/A",
+        pe_ratio: "N/A",
+        pb_ratio: "N/A"
+      };
+    });
 
     let selectedAction = 'BUY';
 
-    // Live Web Scraper over CORS Proxy
+    // Fetch Live Prices directly from CSX
     window.fetchLiveCSXData = async function() {
       const dot = document.getElementById('syncDot');
       const text = document.getElementById('syncText');
@@ -207,22 +198,24 @@
             if (cols.length >= 7) {
               const ticker = cols[0].toUpperCase();
               if (CSX_DATA[ticker]) {
-                const parseNum = (v) => parseFloat(v.replace(/,/g, '').replace(/%/g, '')) || CSX_DATA[ticker].close_price;
-                
-                CSX_DATA[ticker].close_price = parseNum(cols[1]);
-                CSX_DATA[ticker].high = parseNum(cols[3]) || CSX_DATA[ticker].high;
-                CSX_DATA[ticker].low = parseNum(cols[4]) || CSX_DATA[ticker].low;
-                CSX_DATA[ticker].volume = parseNum(cols[6]) || CSX_DATA[ticker].volume;
+                CSX_DATA[ticker].close_price = cols[1] || "N/A";
+                CSX_DATA[ticker].high = cols[3] || "N/A";
+                CSX_DATA[ticker].low = cols[4] || "N/A";
+                CSX_DATA[ticker].volume = cols[6] || "N/A";
+                if (cols[7]) CSX_DATA[ticker].pe_ratio = cols[7];
+                if (cols[8]) CSX_DATA[ticker].pb_ratio = cols[8];
               }
             }
           });
+          dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+          text.innerText = "Live Synced";
+        } else {
+          throw new Error("Empty response");
         }
-        dot.className = "w-2 h-2 rounded-full bg-emerald-400";
-        text.innerText = "Live Synced";
       } catch (e) {
-        console.warn("Using baseline fallback data", e);
-        dot.className = "w-2 h-2 rounded-full bg-blue-400";
-        text.innerText = "Cached Data";
+        console.warn("Could not retrieve live CSX data:", e);
+        dot.className = "w-2 h-2 rounded-full bg-red-400";
+        text.innerText = "Fetch Failed (N/A)";
       }
       renderUI();
     };
@@ -248,9 +241,9 @@
     window.saveApiKey = function() {
       const key = document.getElementById('apiKeyInput').value.trim();
       if (key) {
-        localStorage.setItem('GEMINI_API_KEY', key);
+        localStorage.setItem('CLAUDE_API_KEY', key);
         window.toggleKeyModal();
-        alert('API Key saved successfully!');
+        alert('Claude API Key saved successfully!');
       }
     };
 
@@ -260,13 +253,12 @@
       if (!stock) return;
 
       document.getElementById('badgeSymbol').innerText = stock.ticker;
-      document.getElementById('badgePrice').innerText = `${stock.close_price.toLocaleString()} KHR`;
-      document.getElementById('badgeRange').innerText = `${stock.low.toLocaleString()} - ${stock.high.toLocaleString()} KHR`;
-      document.getElementById('badgeVolume').innerText = `${stock.volume.toLocaleString()} shares`;
-      document.getElementById('badgePE').innerText = stock.pe_ratio || 'N/A';
-      document.getElementById('badgePB').innerText = stock.pb_ratio || 'N/A';
+      document.getElementById('badgePrice').innerText = stock.close_price !== "N/A" ? `${stock.close_price} KHR` : "N/A";
+      document.getElementById('badgeRange').innerText = stock.low !== "N/A" ? `${stock.low} - ${stock.high} KHR` : "N/A";
+      document.getElementById('badgeVolume').innerText = stock.volume !== "N/A" ? `${stock.volume} shares` : "N/A";
+      document.getElementById('badgePE').innerText = stock.pe_ratio;
+      document.getElementById('badgePB').innerText = stock.pb_ratio;
       
-      document.getElementById('targetPriceInput').value = stock.close_price;
       document.getElementById('stockBadge').classList.remove('hidden');
     };
 
@@ -281,17 +273,17 @@
       Object.keys(CSX_DATA).forEach(symbol => {
         const opt = document.createElement('option');
         opt.value = symbol;
-        opt.textContent = `${symbol} - ${CSX_DATA[symbol].close_price.toLocaleString()} KHR`;
+        opt.textContent = `${symbol} - ${CSX_DATA[symbol].close_price !== "N/A" ? CSX_DATA[symbol].close_price + " KHR" : "N/A"}`;
         select.appendChild(opt);
 
         const row = document.createElement('tr');
         row.className = "hover:bg-slate-700/30 transition";
         row.innerHTML = `
           <td class="py-2.5 px-3 font-bold text-white">${symbol}</td>
-          <td class="py-2.5 px-3 font-mono text-emerald-400">${CSX_DATA[symbol].close_price.toLocaleString()}</td>
-          <td class="py-2.5 px-3 font-mono">${CSX_DATA[symbol].high.toLocaleString()}</td>
-          <td class="py-2.5 px-3 font-mono">${CSX_DATA[symbol].low.toLocaleString()}</td>
-          <td class="py-2.5 px-3 font-mono text-slate-400">${CSX_DATA[symbol].volume.toLocaleString()}</td>
+          <td class="py-2.5 px-3 font-mono text-emerald-400">${CSX_DATA[symbol].close_price}</td>
+          <td class="py-2.5 px-3 font-mono">${CSX_DATA[symbol].high}</td>
+          <td class="py-2.5 px-3 font-mono">${CSX_DATA[symbol].low}</td>
+          <td class="py-2.5 px-3 font-mono text-slate-400">${CSX_DATA[symbol].volume}</td>
         `;
         tbody.appendChild(row);
       });
@@ -302,8 +294,9 @@
       window.onStockChange();
     }
 
-    window.runAIAnalysis = async function() {
-      const apiKey = localStorage.getItem('GEMINI_API_KEY') || document.getElementById('apiKeyInput').value.trim();
+    // Call Anthropic Claude API via direct fetch call
+    window.runClaudeAnalysis = async function() {
+      const apiKey = localStorage.getItem('CLAUDE_API_KEY') || document.getElementById('apiKeyInput').value.trim();
       
       if (!apiKey) {
         window.toggleKeyModal();
@@ -323,50 +316,67 @@
 
       statusInd.innerText = "Analyzing...";
       statusInd.className = "text-xs font-normal px-2.5 py-1 rounded bg-yellow-500/20 text-yellow-300 animate-pulse";
-      outputDiv.innerHTML = "<em>Analyzing technical indicators and fundamental metrics...</em>";
+      outputDiv.innerHTML = "<em>Sending data to Claude AI...</em>";
+
+      const promptText = `
+You are an expert financial analyst specializing in the Cambodia Securities Exchange (CSX).
+
+Analyze the stock '${symbol}':
+- Live CSX Close Price: ${stockInfo.close_price} KHR
+- Day High / Low: ${stockInfo.high} KHR / ${stockInfo.low} KHR
+- Volume: ${stockInfo.volume}
+- P/E Ratio: ${stockInfo.pe_ratio}
+- P/B Ratio: ${stockInfo.pb_ratio}
+
+User Trade Strategy:
+- Action: ${selectedAction}
+- Target Entry/Exit Price: ${targetPrice} KHR
+
+Please provide a clear evaluation:
+1. RECOMMENDATION: Bold ONE: [BUY], [SELL], or [HOLD].
+2. SPREAD ASSESSMENT: Compare target price (${targetPrice} KHR) vs current price (${stockInfo.close_price} KHR).
+3. TECHNICAL ANALYSIS: Trade range, volume, and spread feasibility.
+4. FUNDAMENTAL ANALYSIS: Valuation based on available ratios.
+`;
 
       try {
-        const ai = new GoogleGenAI({ apiKey: apiKey });
-        
-        const prompt = `
-        You are an expert quantitative and fundamental financial analyst for the Cambodia Securities Exchange (CSX).
-        
-        Analyze stock '${symbol}' with live market data:
-        - Current CSX Closing Price: ${stockInfo.close_price} KHR
-        - High / Low: ${stockInfo.high} KHR / ${stockInfo.low} KHR
-        - Volume: ${stockInfo.volume}
-        - P/E: ${stockInfo.pe_ratio}
-        - P/B: ${stockInfo.pb_ratio}
-
-        USER INTENT:
-        - Action: ${selectedAction}
-        - User Price: ${targetPrice} KHR
-
-        PROVIDE A STRUCTURED RESPONSE:
-        1. RECOMMENDATION: Bold ONE: [BUY], [SELL], or [HOLD].
-        2. PRICE SPREAD EVALUATION: Compare user price ${targetPrice} KHR vs live ${stockInfo.close_price} KHR.
-        3. TECHNICAL ANALYSIS: Session bounds, trend, and spread.
-        4. FUNDAMENTAL ANALYSIS: Valuation metrics relative to CSX averages.
-        `;
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+            "dangerously-allow-browser": "true"
+          },
+          body: JSON.stringify({
+            model: "claude-3-5-sonnet-20241022",
+            max_tokens: 1000,
+            messages: [
+              { role: "user", content: promptText }
+            ]
+          })
         });
 
-        outputDiv.innerText = response.text;
+        const data = await response.json();
+
+        if (data.error) {
+          throw new Error(data.error.message);
+        }
+
+        const replyContent = data.content[0].text;
+        outputDiv.innerText = replyContent;
         statusInd.innerText = "Completed";
         statusInd.className = "text-xs font-normal px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300";
 
       } catch (err) {
-        outputDiv.innerHTML = `<span class="text-red-400">Error generating analysis: ${err.message}</span>`;
+        outputDiv.innerHTML = `<span class="text-red-400">Error: ${err.message}</span>`;
         statusInd.innerText = "Error";
         statusInd.className = "text-xs font-normal px-2.5 py-1 rounded bg-red-500/20 text-red-300";
       }
     };
 
     document.addEventListener("DOMContentLoaded", () => {
-      const savedKey = localStorage.getItem('GEMINI_API_KEY');
+      const savedKey = localStorage.getItem('CLAUDE_API_KEY');
       if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
       window.fetchLiveCSXData();
     });

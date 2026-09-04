@@ -1,27 +1,28 @@
-from fastapi import FastAPI
 import threading
 import time
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from playwright.sync_api import sync_playwright
 
 # ==========================================
-# PUT YOUR CSX CREDENTIALS HERE
+# CSX CREDENTIALS (Consider using env variables)
 # ==========================================
-CSX_USER = ""
-CSX_PASS = ""
+CSX_USER = "pichar"
+CSX_PASS = "123456789"
 # ==========================================
 
-# Global memory storage for stock data
 market_cache = {
     "status": "Initializing... fetching live data.",
+    "last_updated": None,
     "stocks": []
 }
 
 def run_scraper_thread():
-    """Background worker that runs independently and updates stock prices."""
+    """Background worker that continuously refreshes stock data."""
     global market_cache
     while True:
         try:
-            print("[*] Background Worker: Logging into CSX...")
+            print("[*] Background Worker: Fetching CSX data...")
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 page = browser.new_page()
@@ -29,7 +30,7 @@ def run_scraper_thread():
                 page.goto("https://i.csx.com.kh/market-summary", wait_until="domcontentloaded")
                 page.wait_for_timeout(2000)
 
-                # Check if login is required
+                # Handle login if prompted
                 username_field = page.locator('input[type="text"], input[name="username"], input[name="email"], input[id*="user"]')
                 if username_field.count() > 0:
                     username_field.first.fill(CSX_USER)
@@ -50,36 +51,187 @@ def run_scraper_thread():
 
                 if rows:
                     market_cache = {
-                        "status": "Success",
+                        "status": "Live",
+                        "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
                         "total_tickers": len(rows),
                         "stocks": rows
                     }
-                    print(f"[+] Successfully updated {len(rows)} stock entries!")
+                    print(f"[+] Updated {len(rows)} tickers at {market_cache['last_updated']}")
                 else:
-                    print("[-] No table rows found. Retrying next cycle...")
+                    market_cache["status"] = "Waiting for data..."
+                    print("[-] No rows retrieved. Will retry...")
 
                 browser.close()
         except Exception as e:
             print(f"[!] Scraper Error: {e}")
-            market_cache["last_error"] = str(e)
+            market_cache["status"] = f"Error: {e}"
 
-        # Wait 30 seconds before updating again
-        time.sleep(30)
+        time.sleep(15)  # Scrapes every 15 seconds
 
-# Start the background scraper when the app file loads
-scraper_thread = threading.Thread(target=run_scraper_thread, daemon=True)
-scraper_thread.start()
+# Start background sync
+threading.Thread(target=run_scraper_thread, daemon=True).start()
 
-app = FastAPI(title="CSX Market Bridge API")
-
-@app.get("/")
-def home():
-    return {
-        "message": "CSX Market Bridge API is live!",
-        "endpoint": "/stocks"
-    }
+app = FastAPI(title="CSX Live Market Dashboard")
 
 @app.get("/stocks")
 def get_stocks():
-    """This is the endpoint your AI agents will call."""
     return market_cache
+
+@app.get("/", response_class=HTMLResponse)
+def index():
+    return """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSX Live Market Board</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --green: #2ea043;
+            --red: #da3633;
+            --accent: #58a6ff;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0; font-size: 1.5rem; color: #fff; }
+        .meta-tag {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #21262d;
+        }
+        .badge.live { background: rgba(46, 160, 67, 0.2); color: var(--green); }
+        .table-container {
+            overflow-x: auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            text-align: right;
+        }
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background-color: #1c2128;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        th:first-child, td:first-child { text-align: left; font-weight: 700; color: var(--accent); }
+        tr:hover { background-color: rgba(255, 255, 255, 0.02); }
+        .up { color: var(--green); }
+        .down { color: var(--red); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>Cambodia Securities Exchange (CSX)</h1>
+            <div class="meta-tag">Real-Time Market Watch</div>
+        </div>
+        <div>
+            <span id="sync-status" class="badge">Checking...</span>
+            <span id="last-update" class="meta-tag" style="margin-left: 10px;">--</span>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table id="stock-table">
+            <thead>
+                <tr id="table-head"></tr>
+            </thead>
+            <tbody id="table-body">
+                <tr><td colspan="10" style="text-align:center; padding: 40px;">Connecting to feed...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function fetchMarketData() {
+            try {
+                const response = await fetch('/stocks');
+                const data = await response.json();
+                
+                const statusEl = document.getElementById('sync-status');
+                const updateEl = document.getElementById('last-update');
+                
+                statusEl.textContent = data.status || 'Offline';
+                if(data.status === 'Live') {
+                    statusEl.className = 'badge live';
+                }
+                
+                if(data.last_updated) {
+                    updateEl.textContent = 'Updated: ' + data.last_updated;
+                }
+
+                if (!data.stocks || data.stocks.length === 0) return;
+
+                const tbody = document.getElementById('table-body');
+                const thead = document.getElementById('table-head');
+                
+                // Build dynamic headers if not set
+                if (thead.children.length === 0 && data.stocks.length > 0) {
+                    const colCount = data.stocks[0].length;
+                    const defaultCols = ["Ticker", "Close", "Change", "% Change", "Open", "High", "Low", "Volume", "Value"];
+                    
+                    thead.innerHTML = Array.from({ length: colCount }, (_, i) => 
+                        `<th>${defaultCols[i] || 'Col ' + (i + 1)}</th>`
+                    ).join('');
+                }
+
+                // Render rows
+                tbody.innerHTML = data.stocks.map(row => {
+                    return `<tr>` + row.map((cell, idx) => {
+                        let cellClass = "";
+                        if (cell.includes('+') || (idx === 2 && parseFloat(cell) > 0)) cellClass = "up";
+                        if (cell.includes('-') || (idx === 2 && parseFloat(cell) < 0)) cellClass = "down";
+                        return `<td class="${cellClass}">${cell}</td>`;
+                    }).join('') + `</tr>`;
+                }).join('');
+
+            } catch (err) {
+                console.error("Fetch error:", err);
+            }
+        }
+
+        // Poll every 3 seconds for continuous updates
+        fetchMarketData();
+        setInterval(fetchMarketData, 3000);
+    </script>
+</body>
+</html>
+"""

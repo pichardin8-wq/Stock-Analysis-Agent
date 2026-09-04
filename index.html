@@ -1,616 +1,229 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>US Stock Portfolio & Gemini AI Agent</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Gen AI SDK -->
-  <script type="importmap">
+# csx_agent.py
+import json
+import requests
+import numpy as np
+from openai import OpenAI
+
+# Initialize client (uses OPENAI_API_KEY environment variable)
+client = OpenAI()
+
+API_ENDPOINT = "http://127.0.0.1:8000/stocks"
+
+# =====================================================================
+# AGENT TOOLS (DETERMINISTIC DATA & CALCULATIONS)
+# =====================================================================
+
+def fetch_csx_stock(ticker: str) -> str:
+    """Fetches real-time price and financial data from local CSX API."""
+    ticker_clean = ticker.upper().strip()
+    try:
+        url = f"{API_ENDPOINT}/{ticker_clean}"
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            return json.dumps(resp.json())
+        else:
+            return json.dumps({"error": f"Stock {ticker_clean} not found at {url}"})
+    except Exception as e:
+        return json.dumps({"error": f"Failed to connect to {API_ENDPOINT}: {str(e)}"})
+
+def calculate_technicals(prices_json: str) -> str:
+    """Calculates SMA, RSI, and technical condition from a list of prices."""
+    try:
+        data = json.loads(prices_json)
+        prices = data if isinstance(data, list) else data.get("price_history_30d", [])
+        
+        if len(prices) < 5:
+            return json.dumps({"warning": "Data points too low for deep technical analysis (CSX low liquidity)."})
+        
+        prices_arr = np.array(prices, dtype=float)
+        sma_short = float(np.mean(prices_arr[-5:]))
+        current = prices_arr[-1]
+        
+        # Simple RSI estimation
+        deltas = np.diff(prices_arr)
+        gains = deltas[deltas > 0]
+        losses = -deltas[deltas < 0]
+        avg_gain = np.mean(gains) if len(gains) > 0 else 0.001
+        avg_loss = np.mean(losses) if len(losses) > 0 else 0.001
+        rs = avg_gain / avg_loss
+        rsi = float(100 - (100 / (1 + rs)))
+        
+        condition = "Overbought" if rsi > 70 else "Oversold" if rsi < 30 else "Neutral"
+        
+        return json.dumps({
+            "current_price": current,
+            "sma_5d": round(sma_short, 2),
+            "estimated_rsi": round(rsi, 2),
+            "condition": condition,
+            "data_points": len(prices_arr)
+        })
+    except Exception as e:
+        return json.dumps({"error": f"Technical calculation failed: {str(e)}"})
+
+def calculate_fundamentals(stock_json: str) -> str:
+    """Computes fundamental valuation ratios: P/E, P/B, Dividend Yield."""
+    try:
+        d = json.loads(stock_json)
+        if "error" in d:
+            return stock_json
+        
+        price = d["current_price"]
+        eps = d.get("eps", 0)
+        bps = d.get("bps", 0)
+        dps = d.get("dps", 0)
+        
+        pe = round(price / eps, 2) if eps > 0 else None
+        pb = round(price / bps, 2) if bps > 0 else None
+        div_yield = round((dps / price) * 100, 2) if price > 0 else None
+        
+        return json.dumps({
+            "ticker": d["ticker"],
+            "pe_ratio": pe,
+            "pb_ratio": pb,
+            "dividend_yield_percent": div_yield,
+            "roe_percent": d.get("roe"),
+            "net_margin_percent": d.get("net_margin"),
+            "debt_to_equity": d.get("debt_to_equity")
+        })
+    except Exception as e:
+        return json.dumps({"error": f"Fundamental calculation failed: {str(e)}"})
+
+# =====================================================================
+# AGENT TOOL SPECIFICATIONS (FOR THE LLM)
+# =====================================================================
+
+tools = [
     {
-      "imports": {
-        "@google/genai": "https://esm.run/@google/genai"
-      }
-    }
-  </script>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans pb-16">
-
-  <!-- Navigation Bar -->
-  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <span class="text-2xl">📈</span>
-        <div>
-          <h1 class="text-lg font-bold text-white leading-tight">US Market Portfolio & AI Terminal</h1>
-          <p class="text-[11px] text-slate-400">Simply Wall St Style Valuation Tracker & Gemini AI Engine</p>
-        </div>
-      </div>
-      
-      <div class="flex items-center gap-3">
-        <button onclick="fetchLiveUSData()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-white transition">
-          <span id="syncDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
-          <span id="syncText">Sync Live US Quotes</span>
-        </button>
-
-        <button onclick="toggleKeyModal()" 
-                class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
-                title="Configure Gemini API Key">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- Gemini Key Modal -->
-  <div id="keyModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center">
-        <h3 class="text-lg font-bold text-white">Google Gemini API Settings</h3>
-        <button onclick="toggleKeyModal()" class="text-slate-400 hover:text-white">&times;</button>
-      </div>
-      <p class="text-xs text-slate-400">
-        Enter your Google Gemini API key. The key is saved locally in your browser.
-      </p>
-      <div>
-        <label class="block text-xs text-slate-300 mb-1">Gemini API Key</label>
-        <input type="password" id="apiKeyInput" placeholder="AIzaSy..." 
-               class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button onclick="toggleKeyModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg">Cancel</button>
-        <button onclick="saveApiKey()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white rounded-lg">Save Key</button>
-      </div>
-    </div>
-  </div>
-
-  <main class="max-w-7xl mx-auto px-4 mt-6 space-y-8">
-
-    <!-- Simply Wall St Portfolio Section -->
-    <section class="space-y-6">
-      
-      <!-- Banner -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h3 class="text-xs font-semibold text-amber-400 uppercase tracking-wider">Track the Narrative, not just the ticker.</h3>
-          <p class="text-xs text-slate-400 mt-0.5">Don't just watch prices; document why you invested. Assign narratives to holdings and receive alerts when underlying stories change.</p>
-        </div>
-        <button onclick="openHoldingModal()" class="px-3.5 py-2 bg-amber-500/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500/20 text-xs font-medium rounded-lg whitespace-nowrap">
-          + Add US Holding
-        </button>
-      </div>
-
-      <!-- Dashboard Layout -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        <!-- Summary & Holdings Table -->
-        <div class="lg:col-span-8 space-y-4">
-          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6">
-            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">US Equity Portfolio</span>
-            <div class="flex flex-wrap items-baseline gap-4 mt-2">
-              <span id="totalPortfolioVal" class="text-3xl font-bold text-white font-mono">$0.00</span>
-              <span id="totalPortfolioReturns" class="text-sm font-semibold text-slate-400">0.00% Return</span>
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800">
-              <div>
-                <span class="text-[11px] text-slate-400 block">Unrealized Gain</span>
-                <span id="statUnrealized" class="text-sm font-semibold text-slate-300 font-mono">$0.00</span>
-              </div>
-              <div>
-                <span class="text-[11px] text-slate-400 block">Realized Gain</span>
-                <span class="text-sm font-semibold text-slate-500 font-mono">N/A</span>
-              </div>
-              <div>
-                <span class="text-[11px] text-slate-400 block">Est. Dividends</span>
-                <span id="statDividends" class="text-sm font-semibold text-emerald-400 font-mono">$0.00 /yr</span>
-              </div>
-              <div>
-                <span class="text-[11px] text-slate-400 block">Currency</span>
-                <span class="text-sm font-semibold text-slate-300 font-mono">USD ($)</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Holdings Table -->
-          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 overflow-x-auto">
-            <div class="flex justify-between items-center mb-4">
-              <h4 class="text-sm font-semibold text-slate-200">Holdings & Investment Thesis</h4>
-              <span id="holdingCountBadge" class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded">0 Holdings</span>
-            </div>
-
-            <table class="w-full text-left text-xs text-slate-300">
-              <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
-                <tr>
-                  <th class="py-2.5 px-3">Symbol</th>
-                  <th class="py-2.5 px-3">Shares / Avg Price</th>
-                  <th class="py-2.5 px-3">Live Price vs Fair Value</th>
-                  <th class="py-2.5 px-3">Investment Narrative</th>
-                  <th class="py-2.5 px-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody id="holdingsTableBody" class="divide-y divide-slate-800">
-                <tr>
-                  <td colspan="5" class="py-6 text-center text-slate-500 italic">No holdings added. Click "+ Add US Holding" to track TSLA, AAPL, NVDA, etc.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Simply Wall St Snowflake Chart -->
-        <div class="lg:col-span-4 bg-slate-900/90 border border-slate-800 rounded-xl p-6 flex flex-col justify-between items-center">
-          <div class="w-full flex justify-between items-center mb-2">
-            <h4 class="text-sm font-semibold text-slate-200">Portfolio Snowflake</h4>
-            <span class="text-[10px] text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded">Visual Model</span>
-          </div>
-
-          <div class="relative w-56 h-56 flex items-center justify-center my-4">
-            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-              <polygon points="100,20 176,75 147,165 53,165 24,75" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2,2" />
-              <polygon points="100,45 151,82 131,142 69,142 49,82" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2,2" />
-              <polygon points="100,70 126,89 116,119 84,119 74,89" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2,2" />
-              
-              <line x1="100" y1="100" x2="100" y2="20" stroke="#334155" stroke-width="1"/>
-              <line x1="100" y1="100" x2="176" y2="75" stroke="#334155" stroke-width="1"/>
-              <line x1="100" y1="100" x2="147" y2="165" stroke="#334155" stroke-width="1"/>
-              <line x1="100" y1="100" x2="53" y2="165" stroke="#334155" stroke-width="1"/>
-              <line x1="100" y1="100" x2="24" y2="75" stroke="#334155" stroke-width="1"/>
-
-              <polygon points="100,30 165,70 140,155 50,145 30,85" fill="rgba(245, 158, 11, 0.45)" stroke="#f59e0b" stroke-width="2" />
-            </svg>
-
-            <span class="absolute top-1 text-[10px] font-bold text-amber-400">VALUE</span>
-            <span class="absolute right-0 top-16 text-[10px] font-bold text-slate-400">FUTURE</span>
-            <span class="absolute right-4 bottom-2 text-[10px] font-bold text-slate-400">PAST</span>
-            <span class="absolute left-4 bottom-2 text-[10px] font-bold text-slate-400">HEALTH</span>
-            <span class="absolute left-0 top-16 text-[10px] font-bold text-slate-400">DIVIDEND</span>
-          </div>
-
-          <p class="text-xs text-center text-slate-400">Growth & Fair Value distribution map.</p>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- AI Analysis Section -->
-    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-4 border-t border-slate-800">
-      
-      <!-- Left: Order Form -->
-      <div class="lg:col-span-5 space-y-6">
-        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl">
-          <h2 class="text-base font-semibold mb-4 text-blue-400 flex items-center gap-2">
-            <span>1.</span> Select US Equity
-          </h2>
-          
-          <label class="block text-xs text-slate-400 mb-1">Stock Ticker</label>
-          <select id="tickerSelect" onchange="onStockChange()" 
-                  class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 outline-none">
-          </select>
-
-          <div id="stockBadge" class="mt-4 p-4 rounded-lg bg-slate-950 border border-slate-800 hidden">
-            <div class="flex justify-between items-baseline mb-2">
-              <span id="badgeSymbol" class="text-lg font-bold text-white">---</span>
-              <span id="badgePrice" class="text-base font-semibold text-emerald-400">$0.00</span>
-            </div>
-            <div class="grid grid-cols-2 gap-2 text-xs text-slate-400">
-              <div>1D Change: <span id="badgeChange" class="text-slate-200">0.00%</span></div>
-              <div>52W High: <span id="badgeHigh" class="text-slate-200">$0.00</span></div>
-              <div>52W Low: <span id="badgeLow" class="text-slate-200">$0.00</span></div>
-              <div>Fair Value: <span id="badgeFair" class="text-amber-400">$0.00</span></div>
-            </div>
-          </div>
-
-          <h2 class="text-base font-semibold mt-6 mb-4 text-blue-400 flex items-center gap-2">
-            <span>2.</span> Target Order Parameters
-          </h2>
-
-          <div class="mb-4">
-            <label class="block text-xs text-slate-400 mb-1">Target Limit Price ($ USD)</label>
-            <input type="number" id="targetPriceInput" step="0.01" placeholder="e.g. 300.00" 
-                   class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white font-mono focus:ring-2 focus:ring-blue-500 outline-none" />
-          </div>
-
-          <div class="mb-6">
-            <label class="block text-xs text-slate-400 mb-2">Order Side</label>
-            <div class="grid grid-cols-2 gap-3">
-              <button id="buyToggleBtn" onclick="setAction('BUY')" 
-                      class="py-2.5 rounded-lg border border-emerald-500/50 bg-emerald-500/10 text-emerald-400 font-semibold text-sm transition hover:bg-emerald-500/20">
-                BUY
-              </button>
-              <button id="sellToggleBtn" onclick="setAction('SELL')" 
-                      class="py-2.5 rounded-lg border border-slate-700 bg-slate-950 text-slate-400 font-semibold text-sm transition hover:bg-slate-800">
-                SELL
-              </button>
-            </div>
-          </div>
-
-          <button id="analyzeBtn" onclick="runGeminiAnalysis()" 
-                  class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg shadow-blue-600/30 transition flex justify-center items-center gap-2">
-            <span>🤖 Run Gemini Technical Analysis</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Right: Gemini Output & US Watchlist Table -->
-      <div class="lg:col-span-7 space-y-6">
-        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl min-h-[320px]">
-          <h2 class="text-base font-semibold mb-3 text-blue-400 flex items-center justify-between">
-            <span>Gemini AI Valuation & Strategy Assessment</span>
-            <span id="statusIndicator" class="text-xs font-normal px-2.5 py-1 rounded bg-slate-800 text-slate-400">Idle</span>
-          </h2>
-          
-          <div id="aiOutput" class="text-slate-300 leading-relaxed text-sm whitespace-pre-line">
-            Select a stock ticker, specify your target limit price, choose Buy/Sell, and click <strong class="text-white">Run Gemini Technical Analysis</strong>.
-          </div>
-        </div>
-
-        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl">
-          <h3 class="text-sm font-semibold text-slate-200 mb-3">US Equities Live Watchlist</h3>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs text-slate-300">
-              <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
-                <tr>
-                  <th class="py-2.5 px-3">Symbol</th>
-                  <th class="py-2.5 px-3">Price ($ USD)</th>
-                  <th class="py-2.5 px-3">1D Change</th>
-                  <th class="py-2.5 px-3">Fair Value ($)</th>
-                  <th class="py-2.5 px-3">Status</th>
-                </tr>
-              </thead>
-              <tbody id="marketTableBody" class="divide-y divide-slate-800">
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-    </section>
-  </main>
-
-  <!-- Add Holding Modal -->
-  <div id="holdingModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center">
-        <h3 class="text-base font-bold text-white">Add US Holding</h3>
-        <button onclick="closeHoldingModal()" class="text-slate-400 hover:text-white">&times;</button>
-      </div>
-      
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs text-slate-300 mb-1">Ticker Symbol</label>
-          <select id="modalTickerSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs text-slate-300 mb-1">Number of Shares</label>
-          <input type="number" id="modalSharesInput" placeholder="e.g. 10" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div>
-          <label class="block text-xs text-slate-300 mb-1">Average Cost Per Share ($)</label>
-          <input type="number" id="modalCostInput" step="0.01" placeholder="e.g. 250.00" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div>
-          <label class="block text-xs text-slate-300 mb-1">Target Fair Value ($)</label>
-          <input type="number" id="modalFairValueInput" step="0.01" placeholder="e.g. 300.00" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div>
-          <label class="block text-xs text-slate-300 mb-1">Investment Narrative / Story</label>
-          <textarea id="modalNarrativeInput" rows="2" placeholder="e.g. Is Tesla a stock or a call option on FSD & Robotics?..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-        </div>
-      </div>
-
-      <div class="flex justify-end gap-2 pt-2">
-        <button onclick="closeHoldingModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg">Cancel</button>
-        <button onclick="savePortfolioHolding()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-xs font-semibold text-white rounded-lg">Save Holding</button>
-      </div>
-    </div>
-  </div>
-
-  <script type="module">
-    import { GoogleGenAI } from "@google/genai";
-
-    const US_STOCKS = {
-      "TSLA": { name: "Tesla Inc", price: 349.00, change: -3.8, high: 360.00, low: 138.00, fair: 300.00 },
-      "AAPL": { name: "Apple Inc", price: 224.50, change: 0.8, high: 237.23, low: 164.08, fair: 240.00 },
-      "NVDA": { name: "NVIDIA Corp", price: 128.20, change: 2.4, high: 140.76, low: 45.00, fair: 135.00 },
-      "MSFT": { name: "Microsoft Corp", price: 448.90, change: -0.2, high: 468.35, low: 309.45, fair: 460.00 },
-      "AMZN": { name: "Amazon.com Inc", price: 178.35, change: 1.1, high: 201.20, low: 118.35, fair: 210.00 },
-      "GOOGL": { name: "Alphabet Inc", price: 167.40, change: -0.5, high: 191.75, low: 120.21, fair: 195.00 }
-    };
-
-    let PORTFOLIO_HOLDINGS = [
-      { ticker: "TSLA", shares: 1, cost: 500.00, fairValue: 300.00, narrative: "Is Tesla a Stock or a Call Option on FSD?" }
-    ];
-
-    let selectedAction = 'BUY';
-
-    window.fetchLiveUSData = async function() {
-      const dot = document.getElementById('syncDot');
-      const text = document.getElementById('syncText');
-      dot.className = "w-2 h-2 rounded-full bg-yellow-400 animate-ping";
-      text.innerText = "Syncing Quotes...";
-
-      try {
-        // Fetch US prices from Financial Modeling Prep free endpoint
-        const res = await fetch("https://financialmodelingprep.com/api/v3/quote-short/TSLA,AAPL,NVDA,MSFT,AMZN,GOOGL?apikey=demo");
-        const data = await res.json();
-
-        if (Array.isArray(data) && data.length > 0) {
-          data.forEach(item => {
-            if (US_STOCKS[item.symbol]) {
-              US_STOCKS[item.symbol].price = item.price;
+        "type": "function",
+        "function": {
+            "name": "fetch_csx_stock",
+            "description": "Fetches verified financial statements, price, and profile from http://127.0.0.1:8000/stocks",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ticker": {"type": "string", "description": "CSX ticker symbol (e.g. PWSA, ABC, PAS)"}
+                },
+                "required": ["ticker"]
             }
-          });
-          dot.className = "w-2 h-2 rounded-full bg-emerald-400";
-          text.innerText = "Live Quotes Synced";
-        } else {
-          throw new Error("API demo fallback");
         }
-      } catch (e) {
-        dot.className = "w-2 h-2 rounded-full bg-emerald-400";
-        text.innerText = "Live Synced (Demo)";
-      }
-      renderUI();
-      renderPortfolio();
-    };
-
-    window.toggleKeyModal = function() {
-      document.getElementById('keyModal').classList.toggle('hidden');
-    };
-
-    window.openHoldingModal = function() {
-      document.getElementById('holdingModal').classList.remove('hidden');
-    };
-
-    window.closeHoldingModal = function() {
-      document.getElementById('holdingModal').classList.add('hidden');
-    };
-
-    window.setAction = function(action) {
-      selectedAction = action;
-      const buyBtn = document.getElementById('buyToggleBtn');
-      const sellBtn = document.getElementById('sellToggleBtn');
-
-      if (action === 'BUY') {
-        buyBtn.className = "py-2.5 rounded-lg border border-emerald-500/50 bg-emerald-500/10 text-emerald-400 font-semibold text-sm transition hover:bg-emerald-500/20";
-        sellBtn.className = "py-2.5 rounded-lg border border-slate-700 bg-slate-950 text-slate-400 font-semibold text-sm transition hover:bg-slate-800";
-      } else {
-        sellBtn.className = "py-2.5 rounded-lg border border-red-500/50 bg-red-500/10 text-red-400 font-semibold text-sm transition hover:bg-red-500/20";
-        buyBtn.className = "py-2.5 rounded-lg border border-slate-700 bg-slate-950 text-slate-400 font-semibold text-sm transition hover:bg-slate-800";
-      }
-    };
-
-    window.saveApiKey = function() {
-      const key = document.getElementById('apiKeyInput').value.trim();
-      if (key) {
-        localStorage.setItem('GEMINI_API_KEY', key);
-        window.toggleKeyModal();
-        alert('Gemini API key saved!');
-      }
-    };
-
-    window.savePortfolioHolding = function() {
-      const ticker = document.getElementById('modalTickerSelect').value;
-      const shares = parseFloat(document.getElementById('modalSharesInput').value) || 0;
-      const cost = parseFloat(document.getElementById('modalCostInput').value) || 0;
-      const fairValue = parseFloat(document.getElementById('modalFairValueInput').value) || cost;
-      const narrative = document.getElementById('modalNarrativeInput').value.trim() || 'No narrative assigned.';
-
-      if (shares <= 0 || cost <= 0) {
-        alert('Please enter valid shares and price.');
-        return;
-      }
-
-      const existingIdx = PORTFOLIO_HOLDINGS.findIndex(h => h.ticker === ticker);
-      if (existingIdx >= 0) {
-        PORTFOLIO_HOLDINGS[existingIdx] = { ticker, shares, cost, fairValue, narrative };
-      } else {
-        PORTFOLIO_HOLDINGS.push({ ticker, shares, cost, fairValue, narrative });
-      }
-
-      localStorage.setItem('US_PORTFOLIO', JSON.stringify(PORTFOLIO_HOLDINGS));
-      closeHoldingModal();
-      renderPortfolio();
-    };
-
-    window.deleteHolding = function(ticker) {
-      PORTFOLIO_HOLDINGS = PORTFOLIO_HOLDINGS.filter(h => h.ticker !== ticker);
-      localStorage.setItem('US_PORTFOLIO', JSON.stringify(PORTFOLIO_HOLDINGS));
-      renderPortfolio();
-    };
-
-    window.onStockChange = function() {
-      const symbol = document.getElementById('tickerSelect').value;
-      const stock = US_STOCKS[symbol];
-      if (!stock) return;
-
-      document.getElementById('badgeSymbol').innerText = `${stock.name} (${symbol})`;
-      document.getElementById('badgePrice').innerText = `$${stock.price.toFixed(2)}`;
-      document.getElementById('badgeChange').innerText = `${stock.change >= 0 ? '+' : ''}${stock.change}%`;
-      document.getElementById('badgeChange').className = stock.change >= 0 ? 'text-emerald-400' : 'text-rose-400';
-      document.getElementById('badgeHigh').innerText = `$${stock.high.toFixed(2)}`;
-      document.getElementById('badgeLow').innerText = `$${stock.low.toFixed(2)}`;
-      document.getElementById('badgeFair').innerText = `$${stock.fair.toFixed(2)}`;
-      
-      document.getElementById('stockBadge').classList.remove('hidden');
-    };
-
-    function renderUI() {
-      const select = document.getElementById('tickerSelect');
-      const modalSelect = document.getElementById('modalTickerSelect');
-      const tbody = document.getElementById('marketTableBody');
-      const currentSelected = select.value;
-
-      select.innerHTML = '';
-      modalSelect.innerHTML = '';
-      tbody.innerHTML = '';
-
-      Object.keys(US_STOCKS).forEach(symbol => {
-        const stock = US_STOCKS[symbol];
-        
-        const opt = document.createElement('option');
-        opt.value = symbol;
-        opt.textContent = `${symbol} - $${stock.price.toFixed(2)}`;
-        select.appendChild(opt);
-
-        const mOpt = document.createElement('option');
-        mOpt.value = symbol;
-        mOpt.textContent = `${symbol} - ${stock.name}`;
-        modalSelect.appendChild(mOpt);
-
-        const overVal = (((stock.price - stock.fair) / stock.fair) * 100).toFixed(1);
-
-        const row = document.createElement('tr');
-        row.className = "hover:bg-slate-800/50 transition";
-        row.innerHTML = `
-          <td class="py-2.5 px-3 font-bold text-white">${symbol} <span class="text-[10px] text-slate-500 block font-normal">${stock.name}</span></td>
-          <td class="py-2.5 px-3 font-mono text-emerald-400">$${stock.price.toFixed(2)}</td>
-          <td class="py-2.5 px-3 font-mono ${stock.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${stock.change}%</td>
-          <td class="py-2.5 px-3 font-mono text-slate-300">$${stock.fair.toFixed(2)}</td>
-          <td class="py-2.5 px-3 text-[10px] ${stock.price > stock.fair ? 'text-rose-400' : 'text-emerald-400'}">${Math.abs(overVal)}% ${stock.price > stock.fair ? 'Overvalued' : 'Undervalued'}</td>
-        `;
-        tbody.appendChild(row);
-      });
-
-      if (currentSelected && US_STOCKS[currentSelected]) {
-        select.value = currentSelected;
-      }
-      window.onStockChange();
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_technicals",
+            "description": "Calculates RSI, moving averages, and flags overbought/oversold states.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prices_json": {"type": "string", "description": "JSON string containing historical closing prices."}
+                },
+                "required": ["prices_json"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_fundamentals",
+            "description": "Calculates P/E, P/B, ROE, Yield, and Margins from company financial figures.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "stock_json": {"type": "string", "description": "JSON string containing company financial records."}
+                },
+                "required": ["stock_json"]
+            }
+        }
     }
+]
 
-    function renderPortfolio() {
-      const tbody = document.getElementById('holdingsTableBody');
-      tbody.innerHTML = '';
+# Map names to actual callable Python functions
+available_functions = {
+    "fetch_csx_stock": fetch_csx_stock,
+    "calculate_technicals": calculate_technicals,
+    "calculate_fundamentals": calculate_fundamentals,
+}
 
-      let totalVal = 0;
-      let totalCost = 0;
+# =====================================================================
+# AGENT SYSTEM PROMPT (THE REASONING CORE)
+# =====================================================================
 
-      if (PORTFOLIO_HOLDINGS.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500 italic">No holdings added. Click "+ Add US Holding" to track TSLA, AAPL, etc.</td></tr>`;
-      } else {
-        PORTFOLIO_HOLDINGS.forEach(h => {
-          const livePrice = US_STOCKS[h.ticker]?.price || h.cost;
-          const currentVal = h.shares * livePrice;
-          const costVal = h.shares * h.cost;
-          totalVal += currentVal;
-          totalCost += costVal;
+SYSTEM_PROMPT = """
+You are an expert CSX (Cambodia Securities Exchange) Stock Analysis AI Agent.
+Your job is to turn raw market and financial data into actionable, honest, bilingual analysis for retail investors.
 
-          const diffPct = (((livePrice - h.fairValue) / h.fairValue) * 100).toFixed(1);
-          const valuationText = livePrice > h.fairValue ? `${diffPct}% overvalued` : `${Math.abs(diffPct)}% undervalued`;
+Follow this 6-stage workflow strictly:
+1. Snapshot (Company name in Khmer/English, Board, current price, 1-line verdict)
+2. Fundamental View (Valuation, P/E, P/B, Dividend Yield, financial health with 1-line plain-language interpretation per ratio)
+3. Technical View (RSI, moving average, key support/resistance, volume condition)
+4. Synthesis (Weight fundamentals vs technicals based on investor horizon: for long-term holds, fundamentals weigh 80%+)
+5. Risks & Context (CSX low liquidity, wide bid-ask spread risk, macro/FX debt exposure, and a confidence score /10)
+6. Bottom Line (Actionable, plain-language takeaway for retail investors)
 
-          const row = document.createElement('tr');
-          row.className = "hover:bg-slate-800/40 transition";
-          row.innerHTML = `
-            <td class="py-3 px-3 font-bold text-white">${h.ticker}</td>
-            <td class="py-3 px-3">
-              <div class="font-mono text-slate-200">${h.shares} sh</div>
-              <div class="text-[10px] text-slate-400 font-mono">Avg: $${h.cost.toFixed(2)}</div>
-            </td>
-            <td class="py-3 px-3">
-              <div class="font-mono text-white">$${livePrice.toFixed(2)} vs <span class="text-slate-400">$${h.fairValue.toFixed(2)}</span></div>
-              <div class="text-[10px] ${livePrice > h.fairValue ? 'text-rose-400' : 'text-emerald-400'}">${valuationText}</div>
-            </td>
-            <td class="py-3 px-3 text-slate-300 italic max-w-xs truncate" title="${h.narrative}">${h.narrative}</td>
-            <td class="py-3 px-3 text-right">
-              <button onclick="deleteHolding('${h.ticker}')" class="text-xs text-rose-400 hover:text-rose-300 font-medium">Remove</button>
-            </td>
-          `;
-          tbody.appendChild(row);
-        });
-      }
+Rules:
+- Never present numbers without explaining what they mean for the specific business.
+- Never state "will go up/down" with certainty; explain probabilities instead.
+- If data is missing or illiquid, state it explicitly.
+- Default to dual output (Khmer + English).
+- State the educational disclaimer once, briefly.
+"""
 
-      const totalUnrealized = totalVal - totalCost;
-      const totalReturnPct = totalCost > 0 ? ((totalUnrealized / totalCost) * 100).toFixed(2) : "0.00";
+# =====================================================================
+# AGENT EXECUTION LOOP (REASONING & TOOL CALLING)
+# =====================================================================
 
-      document.getElementById('totalPortfolioVal').innerText = `$${totalVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-      document.getElementById('totalPortfolioReturns').innerText = `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct}% Return`;
-      document.getElementById('totalPortfolioReturns').className = `text-sm font-semibold ${totalUnrealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
-      
-      document.getElementById('statUnrealized').innerText = `$${totalUnrealized.toFixed(2)} (${totalReturnPct}%)`;
-      document.getElementById('statUnrealized').className = `text-sm font-semibold font-mono ${totalUnrealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
-      
-      document.getElementById('holdingCountBadge').innerText = `${PORTFOLIO_HOLDINGS.length} Holding${PORTFOLIO_HOLDINGS.length === 1 ? '' : 's'}`;
-    }
-
-    window.runGeminiAnalysis = async function() {
-      const apiKey = localStorage.getItem('GEMINI_API_KEY') || document.getElementById('apiKeyInput').value.trim();
-      
-      if (!apiKey) {
-        window.toggleKeyModal();
-        return;
-      }
-
-      const symbol = document.getElementById('tickerSelect').value;
-      const targetPrice = parseFloat(document.getElementById('targetPriceInput').value);
-      const stockInfo = US_STOCKS[symbol];
-      const outputDiv = document.getElementById('aiOutput');
-      const statusInd = document.getElementById('statusIndicator');
-
-      if (!targetPrice || targetPrice <= 0) {
-        alert("Please enter a valid target limit price.");
-        return;
-      }
-
-      statusInd.innerText = "Analyzing...";
-      statusInd.className = "text-xs font-normal px-2.5 py-1 rounded bg-yellow-500/20 text-yellow-300 animate-pulse";
-      outputDiv.innerHTML = "<em>Analyzing market structure, fair value metrics, and setup via Gemini...</em>";
-
-      try {
-        const ai = new GoogleGenAI({ apiKey: apiKey });
+def run_csx_agent(user_query: str) -> str:
+    """Executes the agent loop: tool calls -> computation -> final bilingual response."""
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_query}
+    ]
+    
+    # Step 1: Initial call to decide what tools to invoke
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        tools=tools,
+        tool_choice="auto"
+    )
+    
+    response_msg = response.choices[0].message
+    messages.append(response_msg)
+    
+    # Step 2: Handle any tool calls dynamically
+    while response_msg.tool_calls:
+        for tool_call in response_msg.tool_calls:
+            func_name = tool_call.function.name
+            func_args = json.loads(tool_call.function.arguments)
+            tool_fn = available_functions[func_name]
+            
+            # Execute Python function
+            tool_result = tool_fn(**func_args)
+            
+            # Feed tool result back to the LLM agent
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "name": func_name,
+                "content": tool_result
+            })
         
-        const prompt = `
-        You are a Wall Street quantitative and fundamental analyst working with a Simply Wall St framework.
+        # Call LLM again with tool outputs
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            tools=tools
+        )
+        response_msg = response.choices[0].message
+        messages.append(response_msg)
+        
+    return response_msg.content
 
-        Analyze US Security '${symbol}' (${stockInfo.name}) with current metrics:
-        - Live Price: $${stockInfo.price} USD
-        - Estimated Fair Value: $${stockInfo.fair} USD
-        - 1D Change: ${stockInfo.change}%
-        - 52W High / Low: $${stockInfo.high} / $${stockInfo.low}
-
-        USER ORDER SPECIFICATIONS:
-        - Order Action: ${selectedAction}
-        - Desired Target Limit Price: $${targetPrice} USD
-
-        PROVIDE A STRUCTURED DASHBOARD ASSESSMENT:
-        1. STRATEGY VERDICT: Explicitly state **BUY**, **SELL**, or **HOLD**.
-        2. PRICE & VALUATION FEASIBILITY: Contrast current market price ($${stockInfo.price}) with target ($${targetPrice}) and estimated fair value ($${stockInfo.fair}).
-        3. INVESTMENT NARRATIVE REVIEW: Provide a narrative story check (e.g. key growth drivers vs risk risks).
-        4. TECHNICAL & RISK SUMMARY: Support/resistance, momentum breakdown, and execution advisory.
-        `;
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-        });
-
-        outputDiv.innerText = response.text;
-        statusInd.innerText = "Completed";
-        statusInd.className = "text-xs font-normal px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300";
-
-      } catch (err) {
-        outputDiv.innerHTML = `<span class="text-rose-400">Error generating Gemini analysis: ${err.message}</span>`;
-        statusInd.innerText = "Error";
-        statusInd.className = "text-xs font-normal px-2.5 py-1 rounded bg-rose-500/20 text-rose-300";
-      }
-    };
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const savedKey = localStorage.getItem('GEMINI_API_KEY');
-      if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
-
-      const savedPortfolio = localStorage.getItem('US_PORTFOLIO');
-      if (savedPortfolio) {
-        try { PORTFOLIO_HOLDINGS = JSON.parse(savedPortfolio); } catch (e) {}
-      }
-
-      window.fetchLiveUSData();
-    });
-  </script>
-</body>
-</html>
+# =====================================================================
+# TEST RUN
+# =====================================================================
+if __name__ == "__main__":
+    query = "Analyze PWSA for a long-term investment horizon (រយៈពេលវែង). Use data from http://127.0.0.1:8000/stocks."
+    print("\n--- RUNNING CSX AI AGENT ---\n")
+    report = run_csx_agent(query)
+    print(report)

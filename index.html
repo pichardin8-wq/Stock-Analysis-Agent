@@ -1,1 +1,119 @@
+import os
+import time
+import threading
+from datetime import datetime
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from playwright.sync_api import sync_playwright
 
+# ============================================================
+# READ CREDENTIALS FROM ENVIRONMENT VARIABLES (OR FALLBACK)
+# ============================================================
+CSX_USER = os.getenv("CSX_USER", "YOUR_FALLBACK_USERNAME")
+CSX_PASS = os.getenv("CSX_PASS", "YOUR_FALLBACK_PASSWORD")
+
+# Global in-memory cache for fast, zero-latency reads
+market_cache = {
+    "status": "Initializing",
+    "last_updated": None,
+    "total_tickers": 0,
+    "stocks": []
+}
+
+def run_scraper_worker():
+    """Background worker that continuously pulls live CSX prices."""
+    global market_cache
+    while True:
+        try:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Scraping CSX...")
+            with sync_playwright() as p:
+                # Essential flags for running Chromium on Linux cloud servers
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu"
+                    ]
+                )
+                page = browser.new_page()
+                page.goto("https://i.csx.com.kh/market-summary", wait_until="domcontentloaded", timeout=60000)
+                page.wait_for_timeout(2000)
+
+                # Check if login is required
+                username_field = page.locator('input[type="text"], input[name="username"], input[name="email"], input[id*="user"]')
+                if username_field.count() > 0:
+                    username_field.first.fill(CSX_USER)
+                    page.locator('input[type="password"]').first.fill(CSX_PASS)
+                    submit_btn = page.locator('button[type="submit"], button:has-text("Login"), button:has-text("Log In")')
+                    submit_btn.first.click()
+                    page.wait_for_load_state("networkidle", timeout=30000)
+                    page.wait_for_timeout(3000)
+
+                # Extract table data
+                rows = page.eval_on_selector_all("table tbody tr", """
+                    rows => rows.map(r => {
+                        const cells = Array.from(r.querySelectorAll('td, th')).map(c => c.innerText.trim());
+                        return cells.filter(c => c.length > 0);
+                    }).filter(r => r.length > 0)
+                """)
+
+                if rows:
+                    market_cache = {
+                        "status": "Success",
+                        "last_updated": datetime.utcnow().isoformat() + "Z",
+                        "total_tickers": len(rows),
+                        "stocks": rows
+                    }
+                    print(f"[+] Updated {len(rows)} stock entries.")
+                else:
+                    print("[-] No table rows detected. Retrying...")
+
+                browser.close()
+        except Exception as e:
+            print(f"[!] Scraper Error: {e}")
+            market_cache["last_error"] = str(e)
+
+        # Update interval: 30 seconds
+        time.sleep(30)
+
+# Start background scraper thread
+threading.Thread(target=run_scraper_worker, daemon=True).start()
+
+# Initialize FastAPI App
+app = FastAPI(
+    title="CSX Real-Time Market API",
+    description="Bridge API for AI agents to query Cambodia Securities Exchange live data.",
+    version="1.0.0"
+)
+
+# Enable CORS for external agents and applications
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+def home():
+    return {
+        "status": "online",
+        "endpoints": {
+            "all_stocks": "/stocks",
+            "documentation": "/docs"
+        }
+    }
+
+@app.get("/stocks")
+def get_stocks():
+    """Returns the latest CSX market data to any AI Agent."""
+    return market_cache
+
+if __name__ == "__main__":
+    import uvicorn
+    # Bind to 0.0.0.0 and dynamic cloud port (PORT env var)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)

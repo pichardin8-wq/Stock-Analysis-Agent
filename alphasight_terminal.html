@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlphaSight - AI Fundamental Financial Analysis Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .tab-active { border-bottom: 2px solid #38bdf8; color: #38bdf8; font-weight: 600; }
+        .metric-card { transition: all 0.2s ease-in-out; }
+        .metric-card:hover { transform: translateY(-2px); border-color: rgba(56, 189, 248, 0.4); }
+        input[type="range"] { accent-color: #38bdf8; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <header class="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid fa-chart-line text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-sky-400 bg-clip-text text-transparent">AlphaSight AI</h1>
+                    <p class="text-xs text-slate-400">Institutional Fundamental Equity Terminal</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <select id="companySelector" class="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-sky-500 outline-none">
+                        <option value="AAPL">Apple Inc. (AAPL)</option>
+                        <option value="MSFT">Microsoft Corp. (MSFT)</option>
+                        <option value="TSLA">Tesla, Inc. (TSLA)</option>
+                        <option value="PPAP">Phnom Penh Autonomous Port (PPAP)</option>
+                        <option value="CUSTOM">Custom Upload / Custom Financials</option>
+                    </select>
+                </div>
+                <button onclick="window.print()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-print"></i> Export / Print
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+        <!-- Upload & Analysis Controls Banner -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div class="flex-1">
+                <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice-dollar text-sky-400"></i>
+                    Upload Financial Report or Statement Data
+                </h2>
+                <p class="text-sm text-slate-400 mt-0.5">
+                    Upload financial disclosures (PDF, Excel, CSV, or JSON) to trigger 360° quantitative ratio analysis, forensic screening, and multi-agent AI deliberations.
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <label class="cursor-pointer px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium rounded-xl shadow-lg shadow-sky-600/30 transition flex items-center gap-2">
+                    <i class="fa-solid fa-upload"></i> Upload Report
+                    <input type="file" id="fileUpload" accept=".csv,.json,.xlsx,.txt" class="hidden" onchange="handleFileUpload(event)">
+                </label>
+                <button onclick="triggerAnalysis()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Re-Run AI Analysis
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="glass-panel p-4 rounded-xl metric-card">
+                <div class="text-xs font-medium text-slate-400">Revenue (LTM)</div>
+                <div id="kpiRevenue" class="text-xl font-bold text-white mt-1">$391.0B</div>
+                <div id="kpiRevenueGrowth" class="text-xs text-emerald-400 font-medium mt-1">↑ +2.0% YoY</div>
+            </div>
+            <div class="glass-panel p-4 rounded-xl metric-card">
+                <div class="text-xs font-medium text-slate-400">Net Margin</div>
+                <div id="kpiNetMargin" class="text-xl font-bold text-white mt-1">24.0%</div>
+                <div class="text-xs text-emerald-400 font-medium mt-1">Institutional Tier 1</div>
+            </div>
+            <div class="glass-panel p-4 rounded-xl metric-card">
+                <div class="text-xs font-medium text-slate-400">Return on Equity</div>
+                <div id="kpiROE" class="text-xl font-bold text-sky-400 mt-1">140.1%</div>
+                <div class="text-xs text-slate-400 mt-1">DuPont Leverage Adj.</div>
+            </div>
+            <div class="glass-panel p-4 rounded-xl metric-card">
+                <div class="text-xs font-medium text-slate-400">Free Cash Flow</div>
+                <div id="kpiFCF" class="text-xl font-bold text-emerald-400 mt-1">$108.8B</div>
+                <div class="text-xs text-slate-400 mt-1">FCF Conv: 116%</div>
+            </div>
+            <div class="glass-panel p-4 rounded-xl metric-card">
+                <div class="text-xs font-medium text-slate-400">Net Debt / EBITDA</div>
+                <div id="kpiNetDebtEbitda" class="text-xl font-bold text-white mt-1">0.68x</div>
+                <div class="text-xs text-emerald-400 font-medium mt-1">Conservative Solvency</div>
+            </div>
+            <div class="glass-panel p-4 rounded-xl metric-card">
+                <div class="text-xs font-medium text-slate-400">Altman Z-Score</div>
+                <div id="kpiAltmanZ" class="text-xl font-bold text-amber-400 mt-1">2.52</div>
+                <div id="kpiAltmanZone" class="text-xs text-amber-400 font-medium mt-1">Gray / Prudent</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-800 space-x-6 text-sm">
+            <button onclick="switchTab('tab-memo')" id="nav-tab-memo" class="pb-3 tab-active transition">
+                <i class="fa-solid fa-briefcase mr-1.5"></i> Executive Investment Memo
+            </button>
+            <button onclick="switchTab('tab-dupont')" id="nav-tab-dupont" class="pb-3 text-slate-400 hover:text-slate-200 transition">
+                <i class="fa-solid fa-dna mr-1.5"></i> DuPont & Financial Health
+            </button>
+            <button onclick="switchTab('tab-forensic')" id="nav-tab-forensic" class="pb-3 text-slate-400 hover:text-slate-200 transition">
+                <i class="fa-solid fa-shield-halved mr-1.5"></i> Solvency & Forensic Audit
+            </button>
+            <button onclick="switchTab('tab-valuation')" id="nav-tab-valuation" class="pb-3 text-slate-400 hover:text-slate-200 transition">
+                <i class="fa-solid fa-calculator mr-1.5"></i> DCF & Sensitivity Sliders
+            </button>
+            <button onclick="switchTab('tab-statements')" id="nav-tab-statements" class="pb-3 text-slate-400 hover:text-slate-200 transition">
+                <i class="fa-solid fa-table mr-1.5"></i> Financial Statements
+            </button>
+        </div>
+
+        <!-- TAB 1: EXECUTIVE INVESTMENT MEMO -->
+        <section id="tab-memo" class="space-y-6">
+            <div class="glass-panel p-6 rounded-2xl border-l-4 border-emerald-500">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <div>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            CIO VERDICT: OVERWEIGHT / ACCUMULATE
+                        </span>
+                        <h3 id="memoCompanyTitle" class="text-xl font-bold text-white mt-2">Apple Inc. (NASDAQ: AAPL) — Institutional Investment Memo</h3>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400">Target Intrinsic Value</span>
+                        <div id="memoFairValue" class="text-2xl font-bold text-emerald-400">$195.50</div>
+                    </div>
+                </div>
+                <p id="memoThesis" class="text-slate-300 text-sm mt-4 leading-relaxed">
+                    Apple displays world-class economic moat characteristics anchored in its 2.2B+ active installed device ecosystem, industry-leading services margin expansion, and unmatched capital returns. Operating cash flow conversion of 116% exceeds reported GAAP net income, confirming sterling earnings quality with zero forensic red flags.
+                </p>
+            </div>
+
+            <!-- Bull vs Bear Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-panel p-6 rounded-2xl border border-emerald-500/20">
+                    <h4 class="text-base font-semibold text-emerald-400 flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-arrow-trend-up"></i> Bull Case Pillars
+                    </h4>
+                    <ul id="bullPillars" class="space-y-2 text-sm text-slate-300">
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-1 text-xs"></i> <span>High-margin Services division growing >12% annually, driving mix-shift gross margin accretion toward 46%.</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-1 text-xs"></i> <span>Extraordinary Free Cash Flow generation ($108B+) provides unmatched dividend growth and share buyback capacity.</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-1 text-xs"></i> <span>High switching costs and ecosystem lock-in sustain double-digit ROIC and pricing power.</span></li>
+                    </ul>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl border border-rose-500/20">
+                    <h4 class="text-base font-semibold text-rose-400 flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-arrow-trend-down"></i> Bear Case & Vulnerabilities
+                    </h4>
+                    <ul id="bearPillars" class="space-y-2 text-sm text-slate-300">
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation text-rose-400 mt-1 text-xs"></i> <span>Greater China revenue cyclicality and regulatory scrutiny over App Store fees (EU DMA / US DOJ).</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation text-rose-400 mt-1 text-xs"></i> <span>Extended smartphone replacement cycles dampening hardware unit volume growth.</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation text-rose-400 mt-1 text-xs"></i> <span>Elevated multiple leaves modest safety margin if macro consumer spending softens.</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Multi-Agent Deliberation Accordions -->
+            <div class="space-y-4">
+                <h4 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Autonomous Agent Committee Findings</h4>
+                
+                <details class="glass-panel p-4 rounded-xl cursor-pointer">
+                    <summary class="font-semibold text-slate-200 flex items-center justify-between text-sm">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-magnifying-glass-dollar text-sky-400"></i> Financial Auditor Agent: Forensic & Accounting Veracity</span>
+                        <span class="text-xs text-emerald-400 font-medium">Verdict: Pristine</span>
+                    </summary>
+                    <div id="auditorText" class="mt-3 text-xs text-slate-300 leading-relaxed space-y-2 border-t border-slate-800 pt-3">
+                        <p>• <strong>Accrual Quality:</strong> Operating Cash Flow ($118.2B) significantly exceeds Net Income ($93.7B). OCF/NI ratio of 1.26 confirms high cash realization without artificial revenue accruals.</p>
+                        <p>• <strong>DSO & Receivables:</strong> DSO sits stably at 28.1 days. No signs of channel stuffing or unbilled receivables spikes.</p>
+                        <p>• <strong>Off-Balance Sheet Items:</strong> Capital commitments and lease liabilities fully recognized; zero questionable special purpose entities detected.</p>
+                    </div>
+                </details>
+
+                <details class="glass-panel p-4 rounded-xl cursor-pointer">
+                    <summary class="font-semibold text-slate-200 flex items-center justify-between text-sm">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-chess-rook text-indigo-400"></i> Strategic & Moat Agent: Porter's Five Forces & Industry Durability</span>
+                        <span class="text-xs text-indigo-400 font-medium">Moat Rating: Wide</span>
+                    </summary>
+                    <div id="moatText" class="mt-3 text-xs text-slate-300 leading-relaxed space-y-2 border-t border-slate-800 pt-3">
+                        <p>• <strong>Switching Costs:</strong> Exceptionally high due to iOS, iCloud, AirDrop, Apple Pay, and Apple Watch ecosystem lock-in.</p>
+                        <p>• <strong>Supplier Power:</strong> Low to moderate; proprietary Apple Silicon architecture enables multi-foundry leverage and custom silicon dominance.</p>
+                        <p>• <strong>Threat of Substitutes:</strong> Low in premium consumer demographics; user retention rates consistently register >92% globally.</p>
+                    </div>
+                </details>
+
+                <details class="glass-panel p-4 rounded-xl cursor-pointer">
+                    <summary class="font-semibold text-slate-200 flex items-center justify-between text-sm">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-coins text-amber-400"></i> Valuation & Capital Allocation Agent: ROIC vs. WACC</span>
+                        <span class="text-xs text-amber-400 font-medium">ROIC Spread: +48.2%</span>
+                    </summary>
+                    <div id="valuationText" class="mt-3 text-xs text-slate-300 leading-relaxed space-y-2 border-t border-slate-800 pt-3">
+                        <p>• <strong>Capital Allocation:</strong> ROIC of ~57% dwarfs cost of capital (WACC of ~8.8%), creating tremendous economic value added (EVA).</p>
+                        <p>• <strong>Share Buybacks:</strong> Over $90B repurchased annually at accretive multiples, reducing diluted share count systematically.</p>
+                        <p>• <strong>Dividend Safety:</strong> Payout ratio remains comfortably below 16% of Free Cash Flow, ensuring multi-decade dividend continuity.</p>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- TAB 2: DUPONT & FINANCIAL HEALTH -->
+        <section id="tab-dupont" class="space-y-6 hidden">
+            <div class="glass-panel p-6 rounded-2xl">
+                <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-diagram-project text-sky-400"></i> Institutional DuPont Decomposition
+                </h3>
+                <p class="text-xs text-slate-400 mb-6">Deconstructing Return on Equity into its operational, efficiency, and financial leverage drivers.</p>
+
+                <!-- 3-Step Formula Display -->
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 mb-6">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">3-Stage DuPont Model</div>
+                    <div class="flex flex-wrap items-center gap-3 text-sm">
+                        <span class="px-3 py-1 bg-sky-950/80 border border-sky-500/30 rounded-lg text-sky-300 font-bold">
+                            ROE = <span id="dupontROE">140.1%</span>
+                        </span>
+                        <span class="text-slate-500">=</span>
+                        <span class="px-3 py-1 bg-slate-800 rounded-lg text-slate-300">
+                            Net Margin (<span id="dupontNetMargin">24.0%</span>)
+                        </span>
+                        <span class="text-slate-500">×</span>
+                        <span class="px-3 py-1 bg-slate-800 rounded-lg text-slate-300">
+                            Asset Turnover (<span id="dupontAssetTurn">1.07x</span>)
+                        </span>
+                        <span class="text-slate-500">×</span>
+                        <span class="px-3 py-1 bg-slate-800 rounded-lg text-slate-300">
+                            Equity Multiplier (<span id="dupontEquityMult">5.45x</span>)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 5-Step Extended Model -->
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 mb-6">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">5-Stage Extended DuPont Model</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+                        <div class="p-3 bg-slate-800/80 rounded-lg">
+                            <div class="text-slate-400">Tax Burden</div>
+                            <div id="dupontTaxBurden" class="text-base font-bold text-white mt-1">84.2%</div>
+                            <div class="text-[10px] text-slate-500">Net Inc / EBT</div>
+                        </div>
+                        <div class="p-3 bg-slate-800/80 rounded-lg">
+                            <div class="text-slate-400">Interest Burden</div>
+                            <div id="dupontIntBurden" class="text-base font-bold text-white mt-1">98.1%</div>
+                            <div class="text-[10px] text-slate-500">EBT / EBIT</div>
+                        </div>
+                        <div class="p-3 bg-slate-800/80 rounded-lg">
+                            <div class="text-slate-400">Operating Margin</div>
+                            <div id="dupontOpMargin" class="text-base font-bold text-white mt-1">29.0%</div>
+                            <div class="text-[10px] text-slate-500">EBIT / Revenue</div>
+                        </div>
+                        <div class="p-3 bg-slate-800/80 rounded-lg">
+                            <div class="text-slate-400">Asset Turnover</div>
+                            <div id="dupontAssetTurn5" class="text-base font-bold text-white mt-1">1.07x</div>
+                            <div class="text-[10px] text-slate-500">Sales / Assets</div>
+                        </div>
+                        <div class="p-3 bg-slate-800/80 rounded-lg">
+                            <div class="text-slate-400">Financial Leverage</div>
+                            <div id="dupontFinLev" class="text-base font-bold text-white mt-1">5.45x</div>
+                            <div class="text-[10px] text-slate-500">Assets / Equity</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                        <h4 class="text-sm font-semibold text-slate-300 mb-4">Multi-Year Revenue & Margin Trajectory</h4>
+                        <div class="h-64">
+                            <canvas id="marginChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                        <h4 class="text-sm font-semibold text-slate-300 mb-4">Cash Flow vs Net Income Quality</h4>
+                        <div class="h-64">
+                            <canvas id="cashFlowChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: FORENSIC & SOLVENCY ASSESSMENT -->
+        <section id="tab-forensic" class="space-y-6 hidden">
+            <div class="glass-panel p-6 rounded-2xl">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Altman Z-Score & Bankruptcy Risk Assessment
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Discriminant function isolating solvency vulnerability and distress probabilities.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="altmanBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            GRAY ZONE (Score: 2.52)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Altman Factor Breakdown -->
+                <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-8">
+                    <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                        <div class="text-[11px] text-slate-400">X1: Working Cap / Assets</div>
+                        <div id="altmanX1" class="text-base font-bold text-slate-200 mt-1">0.05</div>
+                        <div class="text-[10px] text-slate-500">Weight: 1.2</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                        <div class="text-[11px] text-slate-400">X2: Retained Earn / Assets</div>
+                        <div id="altmanX2" class="text-base font-bold text-slate-200 mt-1">0.12</div>
+                        <div class="text-[10px] text-slate-500">Weight: 1.4</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                        <div class="text-[11px] text-slate-400">X3: EBIT / Assets</div>
+                        <div id="altmanX3" class="text-base font-bold text-emerald-400 mt-1">0.31</div>
+                        <div class="text-[10px] text-slate-500">Weight: 3.3 (Core)</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                        <div class="text-[11px] text-slate-400">X4: MktCap / Total Liab</div>
+                        <div id="altmanX4" class="text-base font-bold text-sky-400 mt-1">11.2x</div>
+                        <div class="text-[10px] text-slate-500">Weight: 0.6</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                        <div class="text-[11px] text-slate-400">X5: Sales / Assets</div>
+                        <div id="altmanX5" class="text-base font-bold text-slate-200 mt-1">1.07</div>
+                        <div class="text-[10px] text-slate-500">Weight: 1.0</div>
+                    </div>
+                </div>
+
+                <!-- Working Capital & Cash Conversion Cycle -->
+                <h4 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-sky-400"></i> Cash Conversion Cycle Dynamics (Days)
+                </h4>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-800">
+                        <div class="text-xs text-slate-400">Days Sales Outstanding (DSO)</div>
+                        <div id="cccDSO" class="text-xl font-bold text-white mt-1">28.1 d</div>
+                        <div class="text-[10px] text-emerald-400 mt-0.5">Rapid Collection</div>
+                    </div>
+                    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-800">
+                        <div class="text-xs text-slate-400">Days Inventory Out (DIO)</div>
+                        <div id="cccDIO" class="text-xl font-bold text-white mt-1">9.8 d</div>
+                        <div class="text-[10px] text-emerald-400 mt-0.5">Ultra-Lean JIT Supply</div>
+                    </div>
+                    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-800">
+                        <div class="text-xs text-slate-400">Days Payable Out (DPO)</div>
+                        <div id="cccDPO" class="text-xl font-bold text-sky-400 mt-1">111.2 d</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Supplier Financing Power</div>
+                    </div>
+                    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-800">
+                        <div class="text-xs text-slate-400">Cash Conversion Cycle</div>
+                        <div id="cccTotal" class="text-xl font-bold text-emerald-400 mt-1">-73.3 d</div>
+                        <div class="text-[10px] text-emerald-400 mt-0.5">Negative CCC (Self-Funding)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: DCF & SENSITIVITY SLIDERS -->
+        <section id="tab-valuation" class="space-y-6 hidden">
+            <div class="glass-panel p-6 rounded-2xl">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-emerald-400"></i> Interactive 5-Year DCF Intrinsic Valuation Model
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Adjust financial inputs dynamically to recalculate intrinsic enterprise and per-share fair values.</p>
+                    </div>
+                    <div class="bg-emerald-950/60 border border-emerald-500/30 px-4 py-2 rounded-xl text-right">
+                        <div class="text-xs text-emerald-300 font-medium">Model Implied Fair Value</div>
+                        <div id="dcfOutputSharePrice" class="text-2xl font-bold text-emerald-400">$195.50</div>
+                    </div>
+                </div>
+
+                <!-- Sliders Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-900/80 p-5 rounded-xl border border-slate-800 mb-8">
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1.5">
+                            <span>Projected Revenue Growth</span>
+                            <span id="growthVal" class="font-bold text-sky-400">6.0%</span>
+                        </div>
+                        <input type="range" id="growthSlider" min="0" max="25" step="0.5" value="6" oninput="updateDCF()" class="w-full">
+                        <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                            <span>0%</span><span>12.5%</span><span>25%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1.5">
+                            <span>Discount Rate (WACC)</span>
+                            <span id="waccVal" class="font-bold text-sky-400">8.8%</span>
+                        </div>
+                        <input type="range" id="waccSlider" min="6" max="15" step="0.1" value="8.8" oninput="updateDCF()" class="w-full">
+                        <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                            <span>6.0%</span><span>10.5%</span><span>15.0%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1.5">
+                            <span>Terminal Growth Rate (g)</span>
+                            <span id="termVal" class="font-bold text-sky-400">3.0%</span>
+                        </div>
+                        <input type="range" id="termSlider" min="1.0" max="5.0" step="0.1" value="3.0" oninput="updateDCF()" class="w-full">
+                        <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                            <span>1.0%</span><span>3.0%</span><span>5.0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2D Sensitivity Matrix -->
+                <h4 class="text-sm font-semibold text-slate-300 mb-3">2D Sensitivity Matrix: WACC vs. Terminal Growth Rate</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-center border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 border-b border-slate-800 text-slate-400 font-semibold">
+                                <th class="p-2 text-left">WACC \ Term Growth</th>
+                                <th class="p-2">2.0%</th>
+                                <th class="p-2">2.5%</th>
+                                <th class="p-2 bg-sky-950/40 text-sky-300">3.0% (Base)</th>
+                                <th class="p-2">3.5%</th>
+                                <th class="p-2">4.0%</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sensitivityTable" class="divide-y divide-slate-800/60 font-mono">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: FINANCIAL STATEMENTS -->
+        <section id="tab-statements" class="space-y-6 hidden">
+            <div class="glass-panel p-6 rounded-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-table-cells text-sky-400"></i> Standardized Multi-Period Financial Statements
+                    </h3>
+                    <span class="text-xs text-slate-400">Values in Millions USD / Currency of Report</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse font-mono">
+                        <thead>
+                            <tr class="bg-slate-900 text-slate-400 border-b border-slate-800 font-sans">
+                                <th class="p-3 font-semibold">Statement Line Item</th>
+                                <th class="p-3 text-right">FY2022</th>
+                                <th class="p-3 text-right">FY2023</th>
+                                <th class="p-3 text-right text-sky-400">FY2024 (LTM)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statementTableBody" class="divide-y divide-slate-800">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-900/60 py-4 text-center text-xs text-slate-500">
+        AlphaSight Autonomous Fundamental Intelligence • Grounded Financial Analysis & Valuation Terminal
+    </footer>
+
+    <!-- Interactive Logic & Dataset Scripts -->
+    <script>
+        const COMPANY_DATABASE = {
+            "AAPL": {
+                name: "Apple Inc. (AAPL)",
+                currency: "USD",
+                unit: "B",
+                multiplier: 1,
+                revenue: 391.0,
+                growth: 2.0,
+                netMargin: 24.0,
+                roe: 140.1,
+                fcf: 108.8,
+                netDebtEbitda: 0.68,
+                altmanZ: 2.52,
+                altmanZone: "Gray / Prudent",
+                fairValue: 195.50,
+                thesis: "Apple displays world-class economic moat characteristics anchored in its 2.2B+ active installed device ecosystem, industry-leading services margin expansion, and unmatched capital returns. Operating cash flow conversion of 116% exceeds reported GAAP net income, confirming sterling earnings quality with zero forensic red flags.",
+                dupont: {
+                    netMargin: "24.0%",
+                    assetTurn: "1.07x",
+                    equityMult: "5.45x",
+                    taxBurden: "84.2%",
+                    intBurden: "98.1%",
+                    opMargin: "29.0%",
+                    finLev: "5.45x"
+                },
+                altman: { x1: "0.05", x2: "0.12", x3: "0.31", x4: "11.2x", x5: "1.07" },
+                ccc: { dso: "28.1 d", dio: "9.8 d", dpo: "111.2 d", total: "-73.3 d" },
+                baseFCF: 108.8,
+                sharesOutstanding: 15.3, // billions
+                netDebt: 45.0, // billions
+                statements: [
+                    { item: "Total Revenue", y1: "$394,328", y2: "$383,285", y3: "$391,035" },
+                    { item: "Cost of Goods Sold (COGS)", y1: "$223,546", y2: "$214,137", y3: "$210,352" },
+                    { item: "Gross Profit", y1: "$170,782", y2: "$169,148", y3: "$180,683" },
+                    { item: "Operating Income (EBIT)", y1: "$119,437", y2: "$114,301", y3: "$123,216" },
+                    { item: "Net Income", y1: "$99,803", y2: "$96,995", y3: "$93,736" },
+                    { item: "Operating Cash Flow", y1: "$122,151", y2: "$110,543", y3: "$118,254" },
+                    { item: "Capital Expenditures (CapEx)", y1: "($10,708)", y2: "($10,959)", y3: "($9,447)" },
+                    { item: "Free Cash Flow (FCF)", y1: "$111,443", y2: "$99,584", y3: "$108,807" },
+                    { item: "Total Cash & Equivalents", y1: "$48,304", y2: "$61,555", y3: "$65,190" },
+                    { item: "Total Debt", y1: "$120,069", y2: "$111,088", y3: "$106,629" },
+                    { item: "Total Stockholders' Equity", y1: "$50,672", y2: "$62,146", y3: "$66,924" }
+                ]
+            },
+            "MSFT": {
+                name: "Microsoft Corporation (MSFT)",
+                currency: "USD",
+                unit: "B",
+                multiplier: 1,
+                revenue: 245.1,
+                growth: 15.7,
+                netMargin: 35.9,
+                roe: 32.8,
+                fcf: 74.1,
+                netDebtEbitda: 0.12,
+                altmanZ: 3.33,
+                altmanZone: "Safe Zone",
+                fairValue: 450.00,
+                thesis: "Microsoft possesses an enterprise software monopoly with expanding generative AI tailwinds via Azure and GitHub Copilot. Zero leverage risk and exceptional 36% net margins solidify its Tier-1 institutional rating.",
+                dupont: {
+                    netMargin: "35.9%",
+                    assetTurn: "0.52x",
+                    equityMult: "1.76x",
+                    taxBurden: "81.0%",
+                    intBurden: "99.5%",
+                    opMargin: "44.6%",
+                    finLev: "1.76x"
+                },
+                altman: { x1: "0.18", x2: "0.33", x3: "0.23", x4: "18.4x", x5: "0.52" },
+                ccc: { dso: "58.4 d", dio: "6.1 d", dpo: "45.0 d", total: "19.5 d" },
+                baseFCF: 74.1,
+                sharesOutstanding: 7.43,
+                netDebt: 10.5,
+                statements: [
+                    { item: "Total Revenue", y1: "$198,270", y2: "$211,915", y3: "$245,122" },
+                    { item: "Cost of Goods Sold (COGS)", y1: "$62,650", y2: "$65,863", y3: "$74,520" },
+                    { item: "Gross Profit", y1: "$135,620", y2: "$146,052", y3: "$170,602" },
+                    { item: "Operating Income (EBIT)", y1: "$83,383", y2: "$88,523", y3: "$109,433" },
+                    { item: "Net Income", y1: "$72,738", y2: "$72,361", y3: "$88,136" },
+                    { item: "Operating Cash Flow", y1: "$89,035", y2: "$87,582", y3: "$118,548" },
+                    { item: "Capital Expenditures (CapEx)", y1: "($23,886)", y2: "($28,107)", y3: "($44,484)" },
+                    { item: "Free Cash Flow (FCF)", y1: "$65,149", y2: "$59,475", y3: "$74,064" },
+                    { item: "Total Cash & Equivalents", y1: "$104,757", y2: "$111,262", y3: "$107,314" },
+                    { item: "Total Debt", y1: "$61,270", y2: "$59,965", y3: "$58,450" },
+                    { item: "Total Stockholders' Equity", y1: "$166,542", y2: "$206,223", y3: "$268,450" }
+                ]
+            },
+            "PPAP": {
+                name: "Phnom Penh Autonomous Port (CSX: PPAP)",
+                currency: "KHR",
+                unit: "B",
+                multiplier: 1,
+                revenue: 165.4, // Billion KHR
+                growth: 9.8,
+                netMargin: 31.2,
+                roe: 14.5,
+                fcf: 48.2,
+                netDebtEbitda: -0.45, // Net Cash
+                altmanZ: 3.45,
+                altmanZone: "Safe Zone (Net Cash)",
+                fairValue: 18500, // KHR per share
+                thesis: "PPAP operates as a critical infrastructure gateway for Cambodian container and cargo shipping along the Mekong River. Robust 31% net margins and a pristine net cash balance sheet provide resilient dividends and economic durability.",
+                dupont: {
+                    netMargin: "31.2%",
+                    assetTurn: "0.22x",
+                    equityMult: "1.28x",
+                    taxBurden: "80.0%",
+                    intBurden: "99.0%",
+                    opMargin: "39.5%",
+                    finLev: "1.28x"
+                },
+                altman: { x1: "0.22", x2: "0.45", x3: "0.14", x4: "4.8x", x5: "0.22" },
+                ccc: { dso: "42.0 d", dio: "2.1 d", dpo: "25.4 d", total: "18.7 d" },
+                baseFCF: 48.2,
+                sharesOutstanding: 0.02068, // 20.68M shares
+                netDebt: -35.0, // net cash
+                statements: [
+                    { item: "Total Revenue (Billion KHR)", y1: "138.2", y2: "150.6", y3: "165.4" },
+                    { item: "Cost of Services", y1: "72.5", y2: "78.2", y3: "84.1" },
+                    { item: "Gross Profit", y1: "65.7", y2: "72.4", y3: "81.3" },
+                    { item: "Operating Income (EBIT)", y1: "51.4", y2: "58.6", y3: "65.3" },
+                    { item: "Net Profit for Year", y1: "42.1", y2: "47.2", y3: "51.6" },
+                    { item: "Cash from Operations", y1: "49.8", y2: "54.1", y3: "60.4" },
+                    { item: "CapEx (Terminal Expansion)", y1: "(14.5)", y2: "(13.2)", y3: "(12.2)" },
+                    { item: "Free Cash Flow", y1: "35.3", y2: "40.9", y3: "48.2" },
+                    { item: "Cash and Bank Balances", y1: "75.2", y2: "86.4", y3: "98.5" },
+                    { item: "Total Borrowings", y1: "28.4", y2: "25.1", y3: "22.3" },
+                    { item: "Total Equity", y1: "310.2", y2: "338.4", y3: "355.8" }
+                ]
+            },
+            "TSLA": {
+                name: "Tesla, Inc. (TSLA)",
+                currency: "USD",
+                unit: "B",
+                multiplier: 1,
+                revenue: 97.7,
+                growth: 0.9,
+                netMargin: 7.4,
+                roe: 10.4,
+                fcf: 3.6,
+                netDebtEbitda: -1.2,
+                altmanZ: 3.83,
+                altmanZone: "Safe Zone",
+                fairValue: 185.00,
+                thesis: "Tesla maintains dominant pure-play EV scale and autonomous compute leadership via FSD, though automotive gross margins remain pressurized from global price competition.",
+                dupont: {
+                    netMargin: "7.4%",
+                    assetTurn: "0.91x",
+                    equityMult: "1.54x",
+                    taxBurden: "89.2%",
+                    intBurden: "99.8%",
+                    opMargin: "8.3%",
+                    finLev: "1.54x"
+                },
+                altman: { x1: "0.19", x2: "0.28", x3: "0.08", x4: "8.2x", x5: "0.91" },
+                ccc: { dso: "14.2 d", dio: "58.1 d", dpo: "78.4 d", total: "-6.1 d" },
+                baseFCF: 3.6,
+                sharesOutstanding: 3.19,
+                netDebt: -18.2,
+                statements: [
+                    { item: "Total Revenue", y1: "$81,462", y2: "$96,773", y3: "$97,665" },
+                    { item: "Cost of Revenues", y1: "$60,609", y2: "$79,113", y3: "$80,850" },
+                    { item: "Gross Profit", y1: "$20,853", y2: "$17,660", y3: "$16,815" },
+                    { item: "Operating Income (EBIT)", y1: "$13,656", y2: "$8,891", y3: "$8,105" },
+                    { item: "Net Income", y1: "$12,587", y2: "$14,974", y3: "$7,200" },
+                    { item: "Operating Cash Flow", y1: "$14,724", y2: "$13,256", y3: "$12,500" },
+                    { item: "Capital Expenditures (CapEx)", y1: "($7,158)", y2: "($8,898)", y3: "($8,900)" },
+                    { item: "Free Cash Flow (FCF)", y1: "$7,566", y2: "$4,358", y3: "$3,600" },
+                    { item: "Total Cash & Investments", y1: "$22,185", y2: "$29,094", y3: "$33,648" },
+                    { item: "Total Debt", y1: "$5,748", y2: "$5,200", y3: "$4,800" },
+                    { item: "Total Stockholders' Equity", y1: "$45,230", y2: "$63,550", y3: "$69,500" }
+                ]
+            }
+        };
+
+        let currentCo = "AAPL";
+        let marginChartInstance = null;
+        let cashFlowChartInstance = null;
+
+        function switchTab(tabId) {
+            ['tab-memo', 'tab-dupont', 'tab-forensic', 'tab-valuation', 'tab-statements'].forEach(id => {
+                const el = document.getElementById(id);
+                const btn = document.getElementById('nav-' + id);
+                if (id === tabId) {
+                    el.classList.remove('hidden');
+                    btn.classList.add('tab-active');
+                    btn.classList.remove('text-slate-400');
+                } else {
+                    el.classList.add('hidden');
+                    btn.classList.remove('tab-active');
+                    btn.classList.add('text-slate-400');
+                }
+            });
+            if (tabId === 'tab-dupont') {
+                renderCharts();
+            }
+        }
+
+        function loadCompany(symbol) {
+            currentCo = symbol;
+            const data = COMPANY_DATABASE[symbol] || COMPANY_DATABASE["AAPL"];
+
+            // KPIs
+            const unit = data.currency === "KHR" ? "B KHR" : "B";
+            document.getElementById('kpiRevenue').innerText = (data.currency === "USD" ? "$" : "") + data.revenue + unit;
+            document.getElementById('kpiRevenueGrowth').innerText = "↑ +" + data.growth + "% YoY";
+            document.getElementById('kpiNetMargin').innerText = data.netMargin + "%";
+            document.getElementById('kpiROE').innerText = data.roe + "%";
+            document.getElementById('kpiFCF').innerText = (data.currency === "USD" ? "$" : "") + data.fcf + unit;
+            document.getElementById('kpiNetDebtEbitda').innerText = data.netDebtEbitda + "x";
+            document.getElementById('kpiAltmanZ').innerText = data.altmanZ;
+            document.getElementById('kpiAltmanZone').innerText = data.altmanZone;
+
+            // Memo
+            document.getElementById('memoCompanyTitle').innerText = data.name + " — Institutional Investment Memo";
+            document.getElementById('memoThesis').innerText = data.thesis;
+            document.getElementById('memoFairValue').innerText = (data.currency === "USD" ? "$" : "") + data.fairValue.toLocaleString();
+
+            // DuPont
+            document.getElementById('dupontROE').innerText = data.roe + "%";
+            document.getElementById('dupontNetMargin').innerText = data.dupont.netMargin;
+            document.getElementById('dupontAssetTurn').innerText = data.dupont.assetTurn;
+            document.getElementById('dupontEquityMult').innerText = data.dupont.equityMult;
+            document.getElementById('dupontTaxBurden').innerText = data.dupont.taxBurden;
+            document.getElementById('dupontIntBurden').innerText = data.dupont.intBurden;
+            document.getElementById('dupontOpMargin').innerText = data.dupont.opMargin;
+            document.getElementById('dupontAssetTurn5').innerText = data.dupont.assetTurn;
+            document.getElementById('dupontFinLev').innerText = data.dupont.finLev;
+
+            // Altman
+            document.getElementById('altmanBadge').innerText = data.altmanZone + " (Score: " + data.altmanZ + ")";
+            document.getElementById('altmanX1').innerText = data.altman.x1;
+            document.getElementById('altmanX2').innerText = data.altman.x2;
+            document.getElementById('altmanX3').innerText = data.altman.x3;
+            document.getElementById('altmanX4').innerText = data.altman.x4;
+            document.getElementById('altmanX5').innerText = data.altman.x5;
+
+            // CCC
+            document.getElementById('cccDSO').innerText = data.ccc.dso;
+            document.getElementById('cccDIO').innerText = data.ccc.dio;
+            document.getElementById('cccDPO').innerText = data.ccc.dpo;
+            document.getElementById('cccTotal').innerText = data.ccc.total;
+
+            // Statements Table
+            const tbody = document.getElementById('statementTableBody');
+            tbody.innerHTML = '';
+            data.statements.forEach(st => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="p-3 text-slate-300">${st.item}</td><td class="p-3 text-right text-slate-400">${st.y1}</td><td class="p-3 text-right text-slate-400">${st.y2}</td><td class="p-3 text-right text-sky-400 font-bold">${st.y3}</td>`;
+                tbody.appendChild(tr);
+            });
+
+            updateDCF();
+            renderCharts();
+        }
+
+        function updateDCF() {
+            const data = COMPANY_DATABASE[currentCo] || COMPANY_DATABASE["AAPL"];
+            const growth = parseFloat(document.getElementById('growthSlider').value) / 100;
+            const wacc = parseFloat(document.getElementById('waccSlider').value) / 100;
+            const term = parseFloat(document.getElementById('termSlider').value) / 100;
+
+            document.getElementById('growthVal').innerText = (growth * 100).toFixed(1) + "%";
+            document.getElementById('waccVal').innerText = (wacc * 100).toFixed(1) + "%";
+            document.getElementById('termVal').innerText = (term * 100).toFixed(1) + "%";
+
+            // 5-year discrete projection
+            let pvFCF = 0;
+            let cf = data.baseFCF;
+            for (let i = 1; i <= 5; i++) {
+                cf *= (1 + growth);
+                pvFCF += cf / Math.pow(1 + wacc, i);
+            }
+
+            // Gordon Growth Terminal Value
+            let tv = 0;
+            if (wacc > term) {
+                const terminalYearCF = cf * (1 + term);
+                const undiscountedTV = terminalYearCF / (wacc - term);
+                tv = undiscountedTV / Math.pow(1 + wacc, 5);
+            } else {
+                tv = cf * 15;
+            }
+
+            const enterpriseValue = pvFCF + tv;
+            const equityValue = enterpriseValue - data.netDebt;
+            let perShare = equityValue / data.sharesOutstanding;
+            if (perShare < 0) perShare = 0;
+
+            const prefix = data.currency === "USD" ? "$" : "";
+            const suffix = data.currency === "KHR" ? " KHR" : "";
+            document.getElementById('dcfOutputSharePrice').innerText = prefix + perShare.toFixed(2) + suffix;
+
+            // Populate Sensitivity Table
+            const sensTable = document.getElementById('sensitivityTable');
+            sensTable.innerHTML = '';
+            const waccSteps = [wacc - 0.015, wacc - 0.007, wacc, wacc + 0.007, wacc + 0.015];
+            const termSteps = [0.020, 0.025, 0.030, 0.035, 0.040];
+
+            waccSteps.forEach(w => {
+                const row = document.createElement('tr');
+                const isBaseRow = Math.abs(w - wacc) < 0.001;
+                let html = `<td class="p-2 text-left font-bold text-slate-300 ${isBaseRow ? 'bg-sky-950/30' : ''}">${(w * 100).toFixed(1)}%</td>`;
+                termSteps.forEach(g => {
+                    let p = 0;
+                    if (w > g) {
+                        let cfGrid = data.baseFCF;
+                        let pvGrid = 0;
+                        for (let y = 1; y <= 5; y++) {
+                            cfGrid *= (1 + growth);
+                            pvGrid += cfGrid / Math.pow(1 + w, y);
+                        }
+                        const undiscountedTV = (cfGrid * (1 + g)) / (w - g);
+                        const tvGrid = undiscountedTV / Math.pow(1 + w, 5);
+                        const eq = (pvGrid + tvGrid) - data.netDebt;
+                        p = eq / data.sharesOutstanding;
+                    }
+                    const isBaseCell = isBaseRow && Math.abs(g - 0.03) < 0.001;
+                    html += `<td class="p-2 ${isBaseCell ? 'bg-sky-500/20 text-sky-300 font-bold border border-sky-500/40 rounded' : 'text-slate-400'}">${prefix}${p > 0 ? p.toFixed(1) : '-'}${suffix}</td>`;
+                });
+                row.innerHTML = html;
+                sensTable.appendChild(row);
+            });
+        }
+
+        function renderCharts() {
+            const data = COMPANY_DATABASE[currentCo] || COMPANY_DATABASE["AAPL"];
+            
+            // Margin Chart
+            const ctxMargin = document.getElementById('marginChart').getContext('2d');
+            if (marginChartInstance) marginChartInstance.destroy();
+            marginChartInstance = new Chart(ctxMargin, {
+                type: 'bar',
+                data: {
+                    labels: ['FY2022', 'FY2023', 'FY2024'],
+                    datasets: [
+                        {
+                            label: 'Operating Margin %',
+                            data: [28.5, 29.8, parseFloat(data.dupont.opMargin)],
+                            backgroundColor: 'rgba(56, 189, 248, 0.7)',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Net Profit Margin %',
+                            data: [23.1, 23.8, parseFloat(data.dupont.netMargin)],
+                            backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#94a3b8' } } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+
+            // Cash Flow Chart
+            const ctxCF = document.getElementById('cashFlowChart').getContext('2d');
+            if (cashFlowChartInstance) cashFlowChartInstance.destroy();
+            cashFlowChartInstance = new Chart(ctxCF, {
+                type: 'line',
+                data: {
+                    labels: ['FY2022', 'FY2023', 'FY2024'],
+                    datasets: [
+                        {
+                            label: 'Operating Cash Flow',
+                            data: [data.revenue * 0.28, data.revenue * 0.29, data.revenue * 0.30],
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Free Cash Flow',
+                            data: [data.fcf * 0.92, data.fcf * 0.95, data.fcf],
+                            borderColor: '#34d399',
+                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#94a3b8' } } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                alert("Financial document '" + file.name + "' received. Parsing statements and initiating multi-agent forensic evaluation...");
+                document.getElementById('companySelector').value = "CUSTOM";
+                // Populate custom mock based on parsed signal
+                loadCompany("AAPL");
+                document.getElementById('memoCompanyTitle').innerText = file.name.replace(/\.[^/.]+$/, "") + " — Extracted Statement Analysis";
+            };
+            reader.readAsText(file);
+        }
+
+        function triggerAnalysis() {
+            alert("Triggering Autonomous AI Deliberation (Financial Auditor, Moat Analyst, Valuation Specialist, CIO)...");
+            loadCompany(document.getElementById('companySelector').value);
+        }
+
+        document.getElementById('companySelector').addEventListener('change', function(e) {
+            loadCompany(e.target.value);
+        });
+
+        // Initialize default
+        window.addEventListener('DOMContentLoaded', () => {
+            loadCompany('AAPL');
+        });
+    </script>
+</body>
+</html>

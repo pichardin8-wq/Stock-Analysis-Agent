@@ -1,117 +1,175 @@
-import os
-import time
-import threading
-from datetime import datetime
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from playwright.sync_api import sync_playwright
+import streamlit as st
+import pdfplumber
+import json
+import pandas as pd
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from google import genai
+from google.genai import types
 
-# ============================================================
-# READ CREDENTIALS FROM ENVIRONMENT VARIABLES (OR FALLBACK)
-# ============================================================
-CSX_USER = os.getenv("CSX_USER", "YOUR_FALLBACK_USERNAME")
-CSX_PASS = os.getenv("CSX_PASS", "YOUR_FALLBACK_PASSWORD")
+# --------------------------------------------------------------------
+# 1. Pydantic Schema: Enforce Comprehensive Fundamental Analysis
+# --------------------------------------------------------------------
+class KeyRatio(BaseModel):
+    metric_name: str = Field(description="Name of metric (e.g., ROE, Net Margin, Current Ratio, Debt-to-Equity)")
+    value: str = Field(description="Reported or computed value with units")
+    health_signal: str = Field(description="'Bullish', 'Neutral', or 'Bearish'")
+    interpretation: str = Field(description="Brief assessment of what this number means")
 
-# Global in-memory cache for fast, zero-latency reads
-market_cache = {
-    "status": "Initializing",
-    "last_updated": None,
-    "total_tickers": 0,
-    "stocks": []
-}
+class AspectAnalysis(BaseModel):
+    profitability_and_growth: str = Field(description="Revenue growth, gross/operating/net margins, ROIC, and earnings quality")
+    solvency_and_liquidity: str = Field(description="Debt structure, interest coverage, working capital, cash burn, and bankruptcy risks")
+    operational_efficiency: str = Field(description="Asset turnover, inventory management, operating leverage")
+    governance_and_risks: str = Field(description="Management commentary tone, capital allocation, legal/regulatory exposures, off-balance sheet items")
 
-def run_scraper_worker():
-    """Background worker that continuously pulls live CSX prices."""
-    global market_cache
-    while True:
-        try:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Scraping CSX...")
-            with sync_playwright() as p:
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--disable-gpu"
-                    ]
-                )
-                page = browser.new_page()
-                page.goto("https://i.csx.com.kh/market-summary", wait_until="domcontentloaded", timeout=60000)
-                page.wait_for_timeout(2000)
+class FundamentalAnalysisReport(BaseModel):
+    company_name: str
+    reporting_period: str
+    currency: str
+    executive_summary: str
+    key_metrics: List[KeyRatio]
+    detailed_aspects: AspectAnalysis
+    moat_and_competitive_position: str
+    bull_case: List[str]
+    bear_case: List[str]
+    valuation_and_verdict: str = Field(description="Verdict: Undervalued, Fairly Valued, Overvalued, or Distressed with explicit rationale")
 
-                # Check if login is required
-                username_field = page.locator('input[type="text"], input[name="username"], input[name="email"], input[id*="user"]')
-                if username_field.count() > 0:
-                    username_field.first.fill(CSX_USER)
-                    page.locator('input[type="password"]').first.fill(CSX_PASS)
-                    submit_btn = page.locator('button[type="submit"], button:has-text("Login"), button:has-text("Log In")')
-                    submit_btn.first.click()
-                    page.wait_for_load_state("networkidle", timeout=30000)
-                    page.wait_for_timeout(3000)
+# --------------------------------------------------------------------
+# 2. PDF Parsing Utilities
+# --------------------------------------------------------------------
+def extract_text_and_tables(uploaded_file, max_pages: int = 40) -> str:
+    """Extracts raw text and converts tabular data into clean Markdown format."""
+    extracted_content = []
+    with pdfplumber.open(uploaded_file) as pdf:
+        num_pages = min(len(pdf.pages), max_pages)
+        for i in range(num_pages):
+            page = pdf.pages[i]
+            text = page.extract_text() or ""
+            
+            # Extract tables if present
+            tables = page.extract_tables()
+            table_md = ""
+            for table in tables:
+                if table and len(table) > 1:
+                    df = pd.DataFrame(table[1:], columns=table[0])
+                    table_md += "\n" + df.dropna(how="all").to_markdown(index=False) + "\n"
+            
+            extracted_content.append(f"--- PAGE {i + 1} ---\n{text}\n{table_md}")
+            
+    return "\n".join(extracted_content)
 
-                # Extract table data
-                rows = page.eval_on_selector_all("table tbody tr", """
-                    rows => rows.map(r => {
-                        const cells = Array.from(r.querySelectorAll('td, th')).map(c => c.innerText.trim());
-                        return cells.filter(c => c.length > 0);
-                    }).filter(r => r.length > 0)
-                """)
+# --------------------------------------------------------------------
+# 3. AI Agent Core Analysis
+# --------------------------------------------------------------------
+def run_fundamental_agent(parsed_financial_text: str) -> FundamentalAnalysisReport:
+    client = genai.Client()
+    
+    prompt = f"""
+You are an institutional Chief Investment Officer and Wall Street Equity Research Analyst.
+Conduct a rigorous, institutional-grade fundamental analysis based solely on the provided financial statements, notes, and disclosures.
 
-                if rows:
-                    market_cache = {
-                        "status": "Success",
-                        "last_updated": datetime.utcnow().isoformat() + "Z",
-                        "total_tickers": len(rows),
-                        "stocks": rows
-                    }
-                    print(f"[+] Updated {len(rows)} stock entries.")
-                else:
-                    print("[-] No table rows detected. Retrying...")
+Audit all core aspects:
+1. Profitability & DuPont breakdown (ROE, ROIC, margin compression/expansion).
+2. Liquidity & Capital Structure (debt maturity wall, cash runway, leverage).
+3. Operating Efficiency (working capital cycle, asset turnover).
+4. Qualitative Red Flags (MD&A tone shift, footnotes, contingent liabilities).
+5. Valuation & Margin of Safety.
 
-                browser.close()
-        except Exception as e:
-            print(f"[!] Scraper Error: {e}")
-            market_cache["last_error"] = str(e)
+Financial Report Data:
+\"\"\"{parsed_financial_text}\"\"\"
+"""
 
-        # Update interval: 30 seconds
-        time.sleep(30)
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=FundamentalAnalysisReport,
+            temperature=0.1,  # Low temperature for strict financial accuracy
+        ),
+    )
+    
+    return FundamentalAnalysisReport.model_validate_json(response.text)
 
-# Start background scraper thread
-threading.Thread(target=run_scraper_worker, daemon=True).start()
+# --------------------------------------------------------------------
+# 4. Streamlit UI
+# --------------------------------------------------------------------
+st.set_page_config(page_title="Institutional AI Fundamental Analyst", layout="wide")
 
-# Initialize FastAPI App
-app = FastAPI(
-    title="CSX Real-Time Market API",
-    description="Bridge API for AI agents to query Cambodia Securities Exchange live data.",
-    version="1.0.0"
-)
+st.title("📊 AI Fundamental Analysis Terminal")
+st.markdown("Upload a quarterly/annual report (`10-K`, `10-Q`, or local audited financial statements) for an institutional multi-aspect audit.")
 
-# Enable CORS for external agents and applications
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+uploaded_file = st.file_uploader("Upload Financial Report (PDF)", type=["pdf"])
 
-@app.get("/")
-def home():
-    return {
-        "status": "online",
-        "endpoints": {
-            "all_stocks": "/stocks",
-            "documentation": "/docs"
-        }
-    }
+if uploaded_file is not None:
+    if st.button("Run Fundamental Audit", type="primary"):
+        with st.status("Processing report...", expanded=True) as status:
+            st.write("Extracting statements, notes, and balance sheet tables...")
+            raw_text = extract_text_and_tables(uploaded_file)
+            
+            st.write("Executing multi-aspect financial audit via Gemini...")
+            try:
+                report = run_fundamental_agent(raw_text)
+                status.update(label="Analysis complete!", state="complete", expanded=False)
+            except Exception as e:
+                status.update(label="Analysis failed", state="error")
+                st.error(f"Error during analysis: {str(e)}")
+                st.stop()
 
-@app.get("/stocks")
-def get_stocks():
-    """Returns the latest CSX market data to any AI Agent."""
-    return market_cache
+        # Render Header
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Entity", report.company_name)
+        col2.metric("Reporting Period", report.reporting_period)
+        col3.metric("Currency", report.currency)
 
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
+        st.subheader("Executive Summary")
+        st.write(report.executive_summary)
+
+        # Render Key Ratios Table
+        st.subheader("Key Financial Ratios & Signals")
+        ratios_data = [
+            {
+                "Metric": r.metric_name,
+                "Value": r.value,
+                "Signal": "🟢 " + r.health_signal if r.health_signal.lower() == "bullish" else ("🔴 " + r.health_signal if r.health_signal.lower() == "bearish" else "🟡 " + r.health_signal),
+                "Analysis": r.interpretation
+            }
+            for r in report.key_metrics
+        ]
+        st.dataframe(pd.DataFrame(ratios_data), use_container_width=True)
+
+        # Render Core Pillars
+        st.subheader("Core Fundamental Pillars")
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "Profitability & Growth", 
+            "Solvency & Liquidity", 
+            "Operational Efficiency", 
+            "Governance & Hidden Risks"
+        ])
+        
+        with tab1:
+            st.markdown(report.detailed_aspects.profitability_and_growth)
+        with tab2:
+            st.markdown(report.detailed_aspects.solvency_and_liquidity)
+        with tab3:
+            st.markdown(report.detailed_aspects.operational_efficiency)
+        with tab4:
+            st.markdown(report.detailed_aspects.governance_and_risks)
+
+        # Competitive Moat & Thesis
+        st.subheader("Moat & Thesis Breakdown")
+        st.write(f"**Competitive Advantage:** {report.moat_and_competitive_position}")
+
+        col_bull, col_bear = st.columns(2)
+        with col_bull:
+            st.success("### Bull Case")
+            for item in report.bull_case:
+                st.markdown(f"- {item}")
+        with col_bear:
+            st.error("### Bear Case & Tail Risks")
+            for item in report.bear_case:
+                st.markdown(f"- {item}")
+
+        # Verdict
+        st.subheader("Valuation Verdict")
+        st.info(report.valuation_and_verdict)

@@ -1,229 +1,85 @@
-# csx_agent.py
-import json
-import requests
-import numpy as np
-from openai import OpenAI
+from fastapi import FastAPI
+import threading
+import time
+from playwright.sync_api import sync_playwright
 
-# Initialize client (uses OPENAI_API_KEY environment variable)
-client = OpenAI()
+# ==========================================
+# PUT YOUR CSX CREDENTIALS HERE
+# ==========================================
+CSX_USER = "pichar"
+CSX_PASS = "123456789"
+# ==========================================
 
-API_ENDPOINT = "http://127.0.0.1:8000/stocks"
-
-# =====================================================================
-# AGENT TOOLS (DETERMINISTIC DATA & CALCULATIONS)
-# =====================================================================
-
-def fetch_csx_stock(ticker: str) -> str:
-    """Fetches real-time price and financial data from local CSX API."""
-    ticker_clean = ticker.upper().strip()
-    try:
-        url = f"{API_ENDPOINT}/{ticker_clean}"
-        resp = requests.get(url, timeout=5)
-        if resp.status_code == 200:
-            return json.dumps(resp.json())
-        else:
-            return json.dumps({"error": f"Stock {ticker_clean} not found at {url}"})
-    except Exception as e:
-        return json.dumps({"error": f"Failed to connect to {API_ENDPOINT}: {str(e)}"})
-
-def calculate_technicals(prices_json: str) -> str:
-    """Calculates SMA, RSI, and technical condition from a list of prices."""
-    try:
-        data = json.loads(prices_json)
-        prices = data if isinstance(data, list) else data.get("price_history_30d", [])
-        
-        if len(prices) < 5:
-            return json.dumps({"warning": "Data points too low for deep technical analysis (CSX low liquidity)."})
-        
-        prices_arr = np.array(prices, dtype=float)
-        sma_short = float(np.mean(prices_arr[-5:]))
-        current = prices_arr[-1]
-        
-        # Simple RSI estimation
-        deltas = np.diff(prices_arr)
-        gains = deltas[deltas > 0]
-        losses = -deltas[deltas < 0]
-        avg_gain = np.mean(gains) if len(gains) > 0 else 0.001
-        avg_loss = np.mean(losses) if len(losses) > 0 else 0.001
-        rs = avg_gain / avg_loss
-        rsi = float(100 - (100 / (1 + rs)))
-        
-        condition = "Overbought" if rsi > 70 else "Oversold" if rsi < 30 else "Neutral"
-        
-        return json.dumps({
-            "current_price": current,
-            "sma_5d": round(sma_short, 2),
-            "estimated_rsi": round(rsi, 2),
-            "condition": condition,
-            "data_points": len(prices_arr)
-        })
-    except Exception as e:
-        return json.dumps({"error": f"Technical calculation failed: {str(e)}"})
-
-def calculate_fundamentals(stock_json: str) -> str:
-    """Computes fundamental valuation ratios: P/E, P/B, Dividend Yield."""
-    try:
-        d = json.loads(stock_json)
-        if "error" in d:
-            return stock_json
-        
-        price = d["current_price"]
-        eps = d.get("eps", 0)
-        bps = d.get("bps", 0)
-        dps = d.get("dps", 0)
-        
-        pe = round(price / eps, 2) if eps > 0 else None
-        pb = round(price / bps, 2) if bps > 0 else None
-        div_yield = round((dps / price) * 100, 2) if price > 0 else None
-        
-        return json.dumps({
-            "ticker": d["ticker"],
-            "pe_ratio": pe,
-            "pb_ratio": pb,
-            "dividend_yield_percent": div_yield,
-            "roe_percent": d.get("roe"),
-            "net_margin_percent": d.get("net_margin"),
-            "debt_to_equity": d.get("debt_to_equity")
-        })
-    except Exception as e:
-        return json.dumps({"error": f"Fundamental calculation failed: {str(e)}"})
-
-# =====================================================================
-# AGENT TOOL SPECIFICATIONS (FOR THE LLM)
-# =====================================================================
-
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "fetch_csx_stock",
-            "description": "Fetches verified financial statements, price, and profile from http://127.0.0.1:8000/stocks",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "ticker": {"type": "string", "description": "CSX ticker symbol (e.g. PWSA, ABC, PAS)"}
-                },
-                "required": ["ticker"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "calculate_technicals",
-            "description": "Calculates RSI, moving averages, and flags overbought/oversold states.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "prices_json": {"type": "string", "description": "JSON string containing historical closing prices."}
-                },
-                "required": ["prices_json"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "calculate_fundamentals",
-            "description": "Calculates P/E, P/B, ROE, Yield, and Margins from company financial figures.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "stock_json": {"type": "string", "description": "JSON string containing company financial records."}
-                },
-                "required": ["stock_json"]
-            }
-        }
-    }
-]
-
-# Map names to actual callable Python functions
-available_functions = {
-    "fetch_csx_stock": fetch_csx_stock,
-    "calculate_technicals": calculate_technicals,
-    "calculate_fundamentals": calculate_fundamentals,
+# Global memory storage for stock data
+market_cache = {
+    "status": "Initializing... fetching live data.",
+    "stocks": []
 }
 
-# =====================================================================
-# AGENT SYSTEM PROMPT (THE REASONING CORE)
-# =====================================================================
+def run_scraper_thread():
+    """Background worker that runs independently and updates stock prices."""
+    global market_cache
+    while True:
+        try:
+            print("[*] Background Worker: Logging into CSX...")
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
 
-SYSTEM_PROMPT = """
-You are an expert CSX (Cambodia Securities Exchange) Stock Analysis AI Agent.
-Your job is to turn raw market and financial data into actionable, honest, bilingual analysis for retail investors.
+                page.goto("https://i.csx.com.kh/market-summary", wait_until="domcontentloaded")
+                page.wait_for_timeout(2000)
 
-Follow this 6-stage workflow strictly:
-1. Snapshot (Company name in Khmer/English, Board, current price, 1-line verdict)
-2. Fundamental View (Valuation, P/E, P/B, Dividend Yield, financial health with 1-line plain-language interpretation per ratio)
-3. Technical View (RSI, moving average, key support/resistance, volume condition)
-4. Synthesis (Weight fundamentals vs technicals based on investor horizon: for long-term holds, fundamentals weigh 80%+)
-5. Risks & Context (CSX low liquidity, wide bid-ask spread risk, macro/FX debt exposure, and a confidence score /10)
-6. Bottom Line (Actionable, plain-language takeaway for retail investors)
+                # Check if login is required
+                username_field = page.locator('input[type="text"], input[name="username"], input[name="email"], input[id*="user"]')
+                if username_field.count() > 0:
+                    username_field.first.fill(CSX_USER)
+                    page.locator('input[type="password"]').first.fill(CSX_PASS)
+                    
+                    submit_btn = page.locator('button[type="submit"], button:has-text("Login"), button:has-text("Log In")')
+                    submit_btn.first.click()
+                    page.wait_for_load_state("networkidle")
+                    page.wait_for_timeout(3000)
 
-Rules:
-- Never present numbers without explaining what they mean for the specific business.
-- Never state "will go up/down" with certainty; explain probabilities instead.
-- If data is missing or illiquid, state it explicitly.
-- Default to dual output (Khmer + English).
-- State the educational disclaimer once, briefly.
-"""
+                # Extract table rows
+                rows = page.eval_on_selector_all("table tbody tr", """
+                    rows => rows.map(r => {
+                        const cells = Array.from(r.querySelectorAll('td, th')).map(c => c.innerText.trim());
+                        return cells.filter(c => c.length > 0);
+                    }).filter(r => r.length > 0)
+                """)
 
-# =====================================================================
-# AGENT EXECUTION LOOP (REASONING & TOOL CALLING)
-# =====================================================================
+                if rows:
+                    market_cache = {
+                        "status": "Success",
+                        "total_tickers": len(rows),
+                        "stocks": rows
+                    }
+                    print(f"[+] Successfully updated {len(rows)} stock entries!")
+                else:
+                    print("[-] No table rows found. Retrying next cycle...")
 
-def run_csx_agent(user_query: str) -> str:
-    """Executes the agent loop: tool calls -> computation -> final bilingual response."""
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user_query}
-    ]
-    
-    # Step 1: Initial call to decide what tools to invoke
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=messages,
-        tools=tools,
-        tool_choice="auto"
-    )
-    
-    response_msg = response.choices[0].message
-    messages.append(response_msg)
-    
-    # Step 2: Handle any tool calls dynamically
-    while response_msg.tool_calls:
-        for tool_call in response_msg.tool_calls:
-            func_name = tool_call.function.name
-            func_args = json.loads(tool_call.function.arguments)
-            tool_fn = available_functions[func_name]
-            
-            # Execute Python function
-            tool_result = tool_fn(**func_args)
-            
-            # Feed tool result back to the LLM agent
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "name": func_name,
-                "content": tool_result
-            })
-        
-        # Call LLM again with tool outputs
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            tools=tools
-        )
-        response_msg = response.choices[0].message
-        messages.append(response_msg)
-        
-    return response_msg.content
+                browser.close()
+        except Exception as e:
+            print(f"[!] Scraper Error: {e}")
+            market_cache["last_error"] = str(e)
 
-# =====================================================================
-# TEST RUN
-# =====================================================================
-if __name__ == "__main__":
-    query = "Analyze PWSA for a long-term investment horizon (រយៈពេលវែង). Use data from http://127.0.0.1:8000/stocks."
-    print("\n--- RUNNING CSX AI AGENT ---\n")
-    report = run_csx_agent(query)
-    print(report)
+        # Wait 30 seconds before updating again
+        time.sleep(30)
+
+# Start the background scraper when the app file loads
+scraper_thread = threading.Thread(target=run_scraper_thread, daemon=True)
+scraper_thread.start()
+
+app = FastAPI(title="CSX Market Bridge API")
+
+@app.get("/")
+def home():
+    return {
+        "message": "CSX Market Bridge API is live!",
+        "endpoint": "/stocks"
+    }
+
+@app.get("/stocks")
+def get_stocks():
+    """This is the endpoint your AI agents will call."""
+    return market_cache

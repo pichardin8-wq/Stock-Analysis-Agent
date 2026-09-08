@@ -1,0 +1,578 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --paper:#EEF1EC;
+    --paper-raised:#F7F8F5;
+    --ink:#1C2B33;
+    --ink-soft:#5B6B70;
+    --rule:#C7CFC7;
+    --rule-strong:#1C2B33;
+    --brass:#A9812E;
+    --brass-dim:#DCCE9F;
+    --good:#2F6F4E;
+    --watch:#A2472F;
+    --focus:#2F5F8F;
+  }
+
+  *{box-sizing:border-box;}
+  #rw-root{
+    font-family:'IBM Plex Sans', sans-serif;
+    color:var(--ink);
+    background:var(--paper);
+    padding:0;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  #rw-root h1,#rw-root h2,#rw-root h3{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    margin:0;
+  }
+  .rw-shell{max-width:1040px;margin:0 auto;padding:36px 28px 80px;}
+
+  /* Header */
+  .rw-head{border-bottom:2px solid var(--rule-strong);padding-bottom:18px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+  .rw-head h1{font-size:28px;letter-spacing:-0.01em;}
+  .rw-head p{margin:6px 0 0;color:var(--ink-soft);font-size:14px;max-width:46ch;}
+  .rw-head .rw-mark{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--brass);border:1px solid var(--brass-dim);padding:4px 10px;white-space:nowrap;}
+
+  /* Sections */
+  .rw-section{margin-bottom:34px;}
+  .rw-section-head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;}
+  .rw-section-head .rw-num{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--brass);}
+  .rw-section-head h2{font-size:19px;}
+  .rw-section-head .rw-rule{flex:1;border-top:1px solid var(--rule);margin-top:2px;}
+
+  /* Upload */
+  .rw-drop{
+    border:1.5px dashed var(--rule-strong);
+    background:var(--paper-raised);
+    padding:28px;
+    text-align:center;
+    cursor:pointer;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .rw-drop:hover, .rw-drop.rw-drag{background:#fff;border-color:var(--brass);}
+  .rw-drop input{display:none;}
+  .rw-drop .rw-drop-title{font-family:'Source Serif 4',serif;font-size:17px;margin-bottom:4px;}
+  .rw-drop .rw-drop-sub{font-size:13px;color:var(--ink-soft);}
+  .rw-filepill{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--paper-raised);border:1px solid var(--rule);
+    padding:6px 12px;font-size:13px;font-family:'IBM Plex Mono',monospace;margin-top:12px;
+  }
+  .rw-filepill button{background:none;border:none;color:var(--watch);cursor:pointer;font-size:13px;font-family:inherit;padding:0;}
+
+  .rw-status{margin-top:14px;font-size:13px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;min-height:18px;}
+  .rw-spinner{width:12px;height:12px;border:2px solid var(--rule);border-top-color:var(--brass);border-radius:50%;animation:rw-spin .7s linear infinite;flex:none;}
+  @keyframes rw-spin{to{transform:rotate(360deg);}}
+  .rw-error{color:var(--watch);font-size:13px;margin-top:10px;}
+
+  /* Ledger table (extracted data + results) */
+  .rw-ledger{width:100%;border-collapse:collapse;background:var(--paper-raised);}
+  .rw-ledger caption{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);padding:8px 12px;border-bottom:1px solid var(--rule);}
+  .rw-ledger td, .rw-ledger th{padding:9px 12px;border-bottom:1px solid var(--rule);font-size:14px;vertical-align:middle;}
+  .rw-ledger tr:last-child td{border-bottom:none;}
+  .rw-ledger .rw-label{color:var(--ink);}
+  .rw-ledger .rw-formula{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);margin-top:2px;}
+  .rw-ledger .rw-val{text-align:right;font-family:'IBM Plex Mono',monospace;width:150px;}
+  .rw-ledger .rw-val strong{font-size:15px;}
+  .rw-ledger input[type=text], .rw-ledger input[type=number]{
+    width:100%;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:14px;
+    border:1px solid var(--rule);background:#fff;padding:6px 8px;color:var(--ink);
+  }
+  .rw-ledger input:focus{outline:2px solid var(--focus);outline-offset:-1px;border-color:var(--focus);}
+  .rw-group-title{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.02em;color:var(--brass);background:#fff;}
+
+  .rw-meta-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;}
+  .rw-meta-row label{display:block;font-size:11px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;margin-bottom:4px;}
+  .rw-meta-row input{width:100%;padding:7px 9px;border:1px solid var(--rule);background:var(--paper-raised);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--ink);}
+
+  .rw-note{font-size:12px;color:var(--ink-soft);margin-top:10px;font-style:italic;}
+
+  /* Results grid */
+  .rw-results-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+  @media (max-width:760px){.rw-results-grid{grid-template-columns:1fr;}}
+  .rw-flag-good{color:var(--good);}
+  .rw-flag-watch{color:var(--watch);}
+  .rw-flag-na{color:var(--ink-soft);}
+
+  .rw-btn{
+    font-family:'IBM Plex Mono',monospace;font-size:13px;background:var(--ink);color:#fff;
+    border:none;padding:10px 18px;cursor:pointer;letter-spacing:.01em;
+  }
+  .rw-btn:hover{background:var(--focus);}
+  .rw-btn:disabled{background:var(--rule);cursor:not-allowed;}
+  .rw-btn-ghost{background:none;color:var(--ink);border:1px solid var(--rule-strong);}
+  .rw-btn-ghost:hover{background:var(--paper-raised);}
+
+  .rw-hidden{display:none !important;}
+</style>
+
+<div id="rw-root">
+  <div class="rw-shell">
+
+    <div class="rw-head">
+      <div>
+        <h1>Ratio Workpaper</h1>
+        <p>Upload a financial statement (PDF or Word). Figures are read automatically, then every profitability, earnings, solvency, liquidity, and valuation ratio is worked out from them.</p>
+      </div>
+      <div class="rw-mark">rev. auto-extract</div>
+    </div>
+
+    <!-- 1. Upload -->
+    <div class="rw-section">
+      <div class="rw-section-head"><span class="rw-num">01</span><h2>Source document</h2><span class="rw-rule"></span></div>
+
+      <div class="rw-drop" id="rw-dropzone">
+        <input type="file" id="rw-file-input" accept=".pdf,.docx" />
+        <div class="rw-drop-title">Drop a statement here, or click to choose a file</div>
+        <div class="rw-drop-sub">PDF or Word (.docx) — annual report, financial statements, or filing extract</div>
+      </div>
+      <div id="rw-filepill-wrap"></div>
+      <div class="rw-status" id="rw-status"></div>
+      <div class="rw-error" id="rw-error"></div>
+    </div>
+
+    <!-- 2. Extracted data -->
+    <div class="rw-section rw-hidden" id="rw-data-section">
+      <div class="rw-section-head"><span class="rw-num">02</span><h2>Statement data</h2><span class="rw-rule"></span></div>
+      <div class="rw-note" id="rw-extract-note" style="margin-top:0;margin-bottom:14px;"></div>
+
+      <div class="rw-meta-row">
+        <div><label>Company</label><input type="text" id="rw-meta-company" /></div>
+        <div><label>Period</label><input type="text" id="rw-meta-period" /></div>
+        <div><label>Currency</label><input type="text" id="rw-meta-currency" /></div>
+      </div>
+
+      <table class="rw-ledger" id="rw-data-table"></table>
+      <div class="rw-note">All monetary figures are stored as absolute amounts (not thousands/millions), converted automatically from the statement's stated scale. Check any field the reader may have misread before ratios are trusted.</div>
+    </div>
+
+    <!-- 3. Market inputs -->
+    <div class="rw-section rw-hidden" id="rw-market-section">
+      <div class="rw-section-head"><span class="rw-num">03</span><h2>Market &amp; valuation inputs</h2><span class="rw-rule"></span></div>
+      <div class="rw-note" style="margin-top:0;margin-bottom:14px;">Not in the statement — enter these yourself for the valuation ratios.</div>
+      <table class="rw-ledger" id="rw-market-table"></table>
+    </div>
+
+    <!-- 4. Results -->
+    <div class="rw-section rw-hidden" id="rw-results-section">
+      <div class="rw-section-head"><span class="rw-num">04</span><h2>Ratios</h2><span class="rw-rule"></span></div>
+      <div class="rw-results-grid" id="rw-results-grid"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function(){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  // ---------- schema ----------
+  var FIELD_GROUPS = [
+    { key:'income_statement', title:'Income statement', fields:[
+      ['revenue','Revenue'],
+      ['cogs','Cost of goods sold'],
+      ['gross_profit','Gross profit'],
+      ['operating_income','Operating income'],
+      ['ebit','EBIT'],
+      ['ebitda','EBITDA'],
+      ['depreciation_amortization','Depreciation & amortization'],
+      ['interest_expense','Interest expense'],
+      ['tax_expense','Tax expense'],
+      ['net_income','Net income']
+    ]},
+    { key:'balance_sheet', title:'Balance sheet', fields:[
+      ['total_assets','Total assets'],
+      ['prior_total_assets','Total assets (prior period)'],
+      ['current_assets','Current assets'],
+      ['inventory','Inventory'],
+      ['cash_and_equivalents','Cash & equivalents'],
+      ['total_liabilities','Total liabilities'],
+      ['current_liabilities','Current liabilities'],
+      ['total_debt','Total interest-bearing debt'],
+      ['total_equity','Total equity'],
+      ['prior_total_equity','Total equity (prior period)'],
+      ['shares_outstanding','Shares outstanding (count)']
+    ]},
+    { key:'other', title:'Other', fields:[
+      ['dividends_paid','Dividends paid']
+    ]}
+  ];
+
+  var MARKET_FIELDS = [
+    ['share_price','Share price (per share)'],
+    ['shares_outstanding_override','Shares outstanding (override, optional)'],
+    ['dividend_per_share_override','Dividend per share (override, optional)'],
+    ['discount_rate_pct','Discount rate, WACC (%)'],
+    ['growth_rate_pct','Projected FCF growth rate (%)'],
+    ['terminal_growth_pct','Terminal growth rate (%)'],
+    ['projection_years','Projection period (years)'],
+    ['current_fcf','Current free cash flow']
+  ];
+
+  var state = {
+    data: null,       // extracted statement data
+    market: {}        // manual market inputs
+  };
+
+  // ---------- helpers ----------
+  function $(id){ return document.getElementById(id); }
+  function num(v){ v = parseFloat(v); return isFinite(v) ? v : null; }
+  function fmtMoney(v, currency){
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    var abs = Math.abs(v);
+    var s = abs.toLocaleString(undefined, {maximumFractionDigits:0});
+    return (v<0?'-':'') + (currency||'') + s;
+  }
+  function fmtPct(v){ return (v===null||!isFinite(v)) ? '—' : (v*100).toFixed(1)+'%'; }
+  function fmtX(v){ return (v===null||!isFinite(v)) ? '—' : v.toFixed(2)+'x'; }
+  function fmtNum(v,d){ return (v===null||!isFinite(v)) ? '—' : v.toFixed(d===undefined?2:d); }
+  function setStatus(msg, spinning){
+    var el = $('rw-status');
+    el.innerHTML = (spinning ? '<span class="rw-spinner"></span>' : '') + '<span>'+msg+'</span>';
+  }
+  function setError(msg){ $('rw-error').textContent = msg || ''; }
+
+  // ---------- upload / drag-drop ----------
+  var dropzone = $('rw-dropzone');
+  var fileInput = $('rw-file-input');
+  dropzone.addEventListener('click', function(){ fileInput.click(); });
+  ['dragenter','dragover'].forEach(function(ev){
+    dropzone.addEventListener(ev, function(e){ e.preventDefault(); dropzone.classList.add('rw-drag'); });
+  });
+  ['dragleave','drop'].forEach(function(ev){
+    dropzone.addEventListener(ev, function(e){ e.preventDefault(); dropzone.classList.remove('rw-drag'); });
+  });
+  dropzone.addEventListener('drop', function(e){
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', function(e){
+    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  function handleFile(file){
+    setError('');
+    var name = file.name.toLowerCase();
+    if (!name.endsWith('.pdf') && !name.endsWith('.docx')){
+      setError('Please upload a .pdf or .docx file.');
+      return;
+    }
+    $('rw-filepill-wrap').innerHTML =
+      '<div class="rw-filepill"><span>'+file.name+'</span><button id="rw-clear-file">remove</button></div>';
+    $('rw-clear-file').addEventListener('click', function(){
+      $('rw-filepill-wrap').innerHTML=''; fileInput.value=''; setStatus(''); setError('');
+    });
+
+    setStatus('Reading document…', true);
+    var reader = name.endsWith('.pdf') ? extractPdf : extractDocx;
+    reader(file).then(function(text){
+      if (!text || text.trim().length < 20){
+        throw new Error('Could not find readable text in this file. If it is a scanned PDF, try a text-based export instead.');
+      }
+      setStatus('Extracting figures…', true);
+      return extractWithAI(text);
+    }).then(function(json){
+      state.data = normalizeData(json);
+      renderDataSection();
+      renderMarketSection();
+      renderResults();
+      setStatus('Extraction complete — review the figures below.', false);
+    }).catch(function(err){
+      console.error(err);
+      setStatus('', false);
+      setError(err.message || 'Something went wrong reading that file.');
+    });
+  }
+
+  function extractPdf(file){
+    return file.arrayBuffer().then(function(buf){
+      return pdfjsLib.getDocument({data: buf}).promise;
+    }).then(function(pdf){
+      var pages = [];
+      var maxPages = Math.min(pdf.numPages, 60);
+      var chain = Promise.resolve();
+      for (var i=1;i<=maxPages;i++){
+        (function(pageNum){
+          chain = chain.then(function(){
+            return pdf.getPage(pageNum).then(function(page){
+              return page.getTextContent();
+            }).then(function(content){
+              var strs = content.items.map(function(it){ return it.str; });
+              pages.push(strs.join(' '));
+            });
+          });
+        })(i);
+      }
+      return chain.then(function(){ return pages.join('\n\n'); });
+    });
+  }
+
+  function extractDocx(file){
+    return file.arrayBuffer().then(function(buf){
+      return mammoth.extractRawText({arrayBuffer: buf});
+    }).then(function(result){ return result.value; });
+  }
+
+  // ---------- AI extraction ----------
+  function extractWithAI(rawText){
+    var text = rawText.slice(0, 100000);
+    var schema = {
+      company_name: "string or null",
+      period: "string or null (e.g. FY2025, Q2 2026)",
+      currency_symbol: "string, e.g. $ or ៛ or null",
+      income_statement: {
+        revenue: null, cogs: null, gross_profit: null, operating_income: null,
+        ebit: null, ebitda: null, depreciation_amortization: null,
+        interest_expense: null, tax_expense: null, net_income: null
+      },
+      balance_sheet: {
+        total_assets: null, prior_total_assets: null, current_assets: null,
+        inventory: null, cash_and_equivalents: null, total_liabilities: null,
+        current_liabilities: null, total_debt: null, total_equity: null,
+        prior_total_equity: null, shares_outstanding: null
+      },
+      other: { dividends_paid: null },
+      notes: "string — anything the reader should flag, e.g. ambiguous line items or missing statements"
+    };
+
+    var system = "You are a precise financial statement data extraction engine. " +
+      "You will be given raw text extracted from a company's financial statements (PDF or Word). " +
+      "Find and return the figures listed in the JSON schema below. Rules:\n" +
+      "1. Respond with ONLY valid JSON matching this schema — no markdown fences, no preamble, no commentary.\n" +
+      "2. Use null for any figure you cannot find with reasonable confidence. Never guess or fabricate a number.\n" +
+      "3. Convert every monetary figure to its ABSOLUTE value. If the statement is presented in thousands or millions, multiply back so the number you return is the true absolute amount.\n" +
+      "4. shares_outstanding must be an absolute share count, not scaled.\n" +
+      "5. If EBIT is not explicitly stated, you may leave it null rather than estimating.\n" +
+      "6. Use the most recent reporting period as the primary figures; prior_total_assets and prior_total_equity should be the immediately preceding period's balances if shown (for averaging), else null.\n\n" +
+      "Schema:\n" + JSON.stringify(schema, null, 2);
+
+    return fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        system: system,
+        messages: [{ role: "user", content: "Document text:\n\n" + text }]
+      })
+    }).then(function(res){
+      if (!res.ok) throw new Error('Extraction request failed (' + res.status + ').');
+      return res.json();
+    }).then(function(data){
+      var textBlocks = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;});
+      var raw = textBlocks.join('\n').trim();
+      raw = raw.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'');
+      var parsed;
+      try { parsed = JSON.parse(raw); }
+      catch(e){ throw new Error('Could not parse the extracted data. Try again, or a cleaner export of the document.'); }
+      return parsed;
+    });
+  }
+
+  function normalizeData(json){
+    var d = {
+      company_name: json.company_name || '',
+      period: json.period || '',
+      currency_symbol: json.currency_symbol || '',
+      notes: json.notes || '',
+      income_statement: json.income_statement || {},
+      balance_sheet: json.balance_sheet || {},
+      other: json.other || {}
+    };
+    FIELD_GROUPS.forEach(function(g){
+      var obj = d[g.key] || {};
+      g.fields.forEach(function(f){ if (!(f[0] in obj)) obj[f[0]] = null; });
+      d[g.key] = obj;
+    });
+    return d;
+  }
+
+  // ---------- render: data section ----------
+  function renderDataSection(){
+    $('rw-data-section').classList.remove('rw-hidden');
+    $('rw-meta-company').value = state.data.company_name || '';
+    $('rw-meta-period').value = state.data.period || '';
+    $('rw-meta-currency').value = state.data.currency_symbol || '';
+    ['rw-meta-company','rw-meta-period','rw-meta-currency'].forEach(function(id){
+      $(id).oninput = function(){
+        state.data.company_name = $('rw-meta-company').value;
+        state.data.period = $('rw-meta-period').value;
+        state.data.currency_symbol = $('rw-meta-currency').value;
+        renderResults();
+      };
+    });
+
+    if (state.data.notes){
+      $('rw-extract-note').textContent = 'Reader\'s note: ' + state.data.notes;
+    } else {
+      $('rw-extract-note').textContent = '';
+    }
+
+    var table = $('rw-data-table');
+    table.innerHTML = '';
+    FIELD_GROUPS.forEach(function(g){
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      td.colSpan = 2; td.className = 'rw-group-title'; td.textContent = g.title;
+      tr.appendChild(td); table.appendChild(tr);
+
+      g.fields.forEach(function(f){
+        var key = f[0], label = f[1];
+        var row = document.createElement('tr');
+        var labelTd = document.createElement('td');
+        labelTd.className = 'rw-label'; labelTd.textContent = label;
+        var valTd = document.createElement('td'); valTd.className = 'rw-val';
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.value = state.data[g.key][key] === null || state.data[g.key][key] === undefined ? '' : state.data[g.key][key];
+        input.addEventListener('input', function(){
+          state.data[g.key][key] = num(input.value);
+          renderResults();
+        });
+        valTd.appendChild(input);
+        row.appendChild(labelTd); row.appendChild(valTd);
+        table.appendChild(row);
+      });
+    });
+  }
+
+  // ---------- render: market section ----------
+  function renderMarketSection(){
+    $('rw-market-section').classList.remove('rw-hidden');
+    var table = $('rw-market-table');
+    table.innerHTML = '';
+    MARKET_FIELDS.forEach(function(f){
+      var key = f[0], label = f[1];
+      var row = document.createElement('tr');
+      var labelTd = document.createElement('td'); labelTd.className='rw-label'; labelTd.textContent = label;
+      var valTd = document.createElement('td'); valTd.className='rw-val';
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.value = state.market[key] === undefined ? '' : state.market[key];
+      input.addEventListener('input', function(){
+        state.market[key] = num(input.value);
+        renderResults();
+      });
+      valTd.appendChild(input);
+      row.appendChild(labelTd); row.appendChild(valTd);
+      table.appendChild(row);
+    });
+  }
+
+  // ---------- ratio computation ----------
+  function computeRatios(){
+    var d = state.data, m = state.market, cur = (d && d.currency_symbol) || '';
+    var IS = (d && d.income_statement) || {};
+    var BS = (d && d.balance_sheet) || {};
+    var OT = (d && d.other) || {};
+
+    var avgAssets = (BS.total_assets!=null && BS.prior_total_assets!=null) ? (BS.total_assets+BS.prior_total_assets)/2 : BS.total_assets;
+    var avgEquity = (BS.total_equity!=null && BS.prior_total_equity!=null) ? (BS.total_equity+BS.prior_total_equity)/2 : BS.total_equity;
+
+    var sharesOut = m.shares_outstanding_override!=null ? m.shares_outstanding_override : BS.shares_outstanding;
+    var divPerShare = m.dividend_per_share_override!=null ? m.dividend_per_share_override :
+      (OT.dividends_paid!=null && sharesOut) ? OT.dividends_paid/sharesOut : null;
+
+    var effTaxRate = (IS.tax_expense!=null && IS.net_income!=null && (IS.net_income+IS.tax_expense)!==0)
+      ? IS.tax_expense/(IS.net_income+IS.tax_expense) : null;
+    var nopat = (IS.ebit!=null && effTaxRate!=null) ? IS.ebit*(1-effTaxRate) : null;
+    var investedCapital = (BS.total_debt!=null && BS.total_equity!=null)
+      ? BS.total_debt + BS.total_equity - (BS.cash_and_equivalents||0) : null;
+
+    var eps = (IS.net_income!=null && sharesOut) ? IS.net_income/sharesOut : null;
+    var bookValuePerShare = (BS.total_equity!=null && sharesOut) ? BS.total_equity/sharesOut : null;
+    var marketCap = (m.share_price!=null && sharesOut) ? m.share_price*sharesOut : null;
+    var netDebt = (BS.total_debt!=null) ? BS.total_debt - (BS.cash_and_equivalents||0) : null;
+    var ev = (marketCap!=null && netDebt!=null) ? marketCap + netDebt : null;
+
+    var dcfValue = null, dcfPerShare = null;
+    if (m.current_fcf!=null && m.discount_rate_pct!=null && m.growth_rate_pct!=null &&
+        m.terminal_growth_pct!=null && m.projection_years!=null){
+      var r = m.discount_rate_pct/100, g = m.growth_rate_pct/100, tg = m.terminal_growth_pct/100, n = Math.round(m.projection_years);
+      if (r > tg && n > 0){
+        var pv = 0, fcf = m.current_fcf;
+        for (var y=1;y<=n;y++){ fcf = fcf*(1+g); pv += fcf/Math.pow(1+r,y); }
+        var terminal = (fcf*(1+tg))/(r-tg);
+        var pvTerminal = terminal/Math.pow(1+r,n);
+        dcfValue = pv + pvTerminal;
+        dcfPerShare = sharesOut ? dcfValue/sharesOut : null;
+      }
+    }
+
+    return {
+      currency: cur,
+      groups: [
+        { title:'A. Profitability', rows:[
+          ['Gross margin','Gross profit ÷ Revenue', ratio(BS,IS.gross_profit,IS.revenue),'pct'],
+          ['Profit margin','Operating income ÷ Revenue', ratio(BS,IS.operating_income,IS.revenue),'pct'],
+          ['Net margin','Net income ÷ Revenue', ratio(BS,IS.net_income,IS.revenue),'pct'],
+          ['ROA','Net income ÷ Total assets'+(BS.prior_total_assets!=null?' (avg)':''), ratio(BS,IS.net_income,avgAssets),'pct'],
+          ['ROE','Net income ÷ Total equity'+(BS.prior_total_equity!=null?' (avg)':''), ratio(BS,IS.net_income,avgEquity),'pct'],
+          ['ROIC','NOPAT ÷ Invested capital', ratio(BS,nopat,investedCapital),'pct']
+        ]},
+        { title:'B. Earnings', rows:[
+          ['Dividend yield','Dividend/share ÷ Share price', ratio(BS,divPerShare,m.share_price),'pct'],
+          ['Dividend payout ratio','Dividends paid ÷ Net income', ratio(BS,OT.dividends_paid,IS.net_income),'pct'],
+          ['EPS','Net income ÷ Shares outstanding', money(eps,cur),'raw']
+        ]},
+        { title:'C. Solvency', rows:[
+          ['Debt to equity','Total debt ÷ Total equity', xratio(BS.total_debt,BS.total_equity),'x'],
+          ['Debt to asset','Total debt ÷ Total assets', ratio(BS,BS.total_debt,BS.total_assets),'pct'],
+          ['Interest coverage ratio','EBIT ÷ Interest expense', xratio(IS.ebit,IS.interest_expense),'x']
+        ]},
+        { title:'D. Liquidity', rows:[
+          ['Current ratio','Current assets ÷ Current liabilities', xratio(BS.current_assets,BS.current_liabilities),'x'],
+          ['Quick ratio','(Current assets − Inventory) ÷ Current liabilities',
+            xratio(BS.current_assets!=null && BS.inventory!=null ? BS.current_assets-BS.inventory : null, BS.current_liabilities),'x']
+        ]},
+        { title:'E. Valuation', rows:[
+          ['P/E','Share price ÷ EPS', xratio(m.share_price, eps),'x'],
+          ['P/B','Share price ÷ Book value per share', xratio(m.share_price, bookValuePerShare),'x'],
+          ['EV/EBITDA','Enterprise value ÷ EBITDA', xratio(ev, IS.ebitda),'x'],
+          ['DCF — intrinsic value/share','Discounted FCF model', money(dcfPerShare,cur),'raw']
+        ]}
+      ]
+    };
+  }
+  function ratio(_,num_,den_){ return (num_!=null && den_!=null && den_!==0) ? num_/den_ : null; }
+  function xratio(a,b){ return (a!=null && b!=null && b!==0) ? a/b : null; }
+  function money(v,cur){ return v===null ? null : {raw:v, currency:cur}; }
+
+  // ---------- render: results ----------
+  function renderResults(){
+    if (!state.data){ $('rw-results-section').classList.add('rw-hidden'); return; }
+    $('rw-results-section').classList.remove('rw-hidden');
+    var r = computeRatios();
+    var grid = $('rw-results-grid');
+    grid.innerHTML = '';
+    r.groups.forEach(function(g){
+      var table = document.createElement('table');
+      table.className = 'rw-ledger';
+      var caption = document.createElement('caption'); caption.textContent = g.title;
+      table.appendChild(caption);
+      g.rows.forEach(function(row){
+        var name = row[0], formula = row[1], val = row[2], kind = row[3];
+        var tr = document.createElement('tr');
+        var labelTd = document.createElement('td'); labelTd.className='rw-label';
+        labelTd.innerHTML = name + '<span class="rw-formula">'+formula+'</span>';
+        var valTd = document.createElement('td'); valTd.className='rw-val';
+        var display;
+        if (kind==='pct') display = fmtPct(val);
+        else if (kind==='x') display = fmtX(val);
+        else if (kind==='raw') display = val ? fmtMoney(val.raw, val.currency) : '—';
+        else display = '—';
+        valTd.innerHTML = '<strong>'+display+'</strong>';
+        tr.appendChild(labelTd); tr.appendChild(valTd);
+        table.appendChild(tr);
+      });
+      grid.appendChild(table);
+    });
+  }
+
+})();
+</script>

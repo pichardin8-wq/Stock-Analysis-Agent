@@ -266,8 +266,8 @@
         let requestContents = [];
         const promptInstruction = 
           "Extract ONLY the explicit, officially reported financial statement line items for the latest fiscal year directly as reported in the attached file. " +
-          "DO NOT calculate, deduce, or estimate any figure that is not stated verbatim in the document; return null for any missing item. " +
-          "Extract beginning_assets and beginning_equity ONLY if prior year balances are explicitly stated in the comparative columns. " +
+          "DO NOT calculate, deduce, extrapolate, or estimate any figure that is not stated verbatim in the document; return null for any missing item. " +
+          "Extract beginning_assets and beginning_equity ONLY if prior year balances are explicitly stated in comparative columns. " +
           "Differentiate interest_bearing_debt (bonds/bank loans/lease obligations) from total liabilities. " +
           "Normalize numbers to full units (e.g. multiply millions by 1,000,000). State if figures are reported in USD or KHR.";
 
@@ -320,6 +320,7 @@
       const isUSD = docCurrency.includes("USD") || docCurrency.includes("$");
       const multiplier = isUSD ? USD_TO_KHR : 1.0;
 
+      // Internal calculation workspace
       const d = {};
       for (const [key, val] of Object.entries(rawExtractedData)) {
         if (typeof val === "number" && !key.includes("shares")) {
@@ -335,10 +336,12 @@
       const priceCurrency = document.getElementById("priceCurrency").value;
       let priceInKHR = (!isNaN(priceInput) && priceInput > 0) ? (priceCurrency === "USD" ? priceInput * USD_TO_KHR : priceInput) : null;
 
+      // Manual DPS applies ONLY to valuation metrics, not the raw extracted audit table
       const manualDPSInput = parseFloat(document.getElementById("manualDPS").value);
       const dpsCurrency = document.getElementById("dpsCurrency").value;
+      let effectiveDPS = d.dividend_per_share;
       if (!isNaN(manualDPSInput) && manualDPSInput >= 0) {
-        d.dividend_per_share = (dpsCurrency === "USD") ? manualDPSInput * USD_TO_KHR : manualDPSInput;
+        effectiveDPS = (dpsCurrency === "USD") ? manualDPSInput * USD_TO_KHR : manualDPSInput;
       }
 
       const listedShares = d.shares_outstanding || 0;
@@ -405,15 +408,15 @@
       const peRatio = (priceInKHR && eps && eps > 0) ? (priceInKHR / eps).toFixed(2) + "x" : "N/A";
 
       let divYieldDisplay = "N/A";
-      if (priceInKHR && d.dividend_per_share) {
-        divYieldDisplay = ((d.dividend_per_share / priceInKHR) * 100).toFixed(2) + "%";
+      if (priceInKHR && effectiveDPS) {
+        divYieldDisplay = ((effectiveDPS / priceInKHR) * 100).toFixed(2) + "%";
       }
 
       let divPayoutDisplay = "N/A";
       if (d.total_dividend && d.net_income > 0) {
         divPayoutDisplay = ((d.total_dividend / d.net_income) * 100).toFixed(2) + "%";
-      } else if (d.dividend_per_share && eps && eps > 0) {
-        divPayoutDisplay = ((d.dividend_per_share / eps) * 100).toFixed(2) + "%";
+      } else if (effectiveDPS && eps && eps > 0) {
+        divPayoutDisplay = ((effectiveDPS / eps) * 100).toFixed(2) + "%";
       }
 
       const currentRatio = (d.current_assets && d.current_liabilities) ? (d.current_assets / d.current_liabilities).toFixed(2) : "N/A";
@@ -450,12 +453,13 @@
           "Earnings Per Share (EPS)": epsDisplay,
           "Dividend Yield": divYieldDisplay,
           "Dividend Payout Ratio": divPayoutDisplay,
-          "Dividend Per Share": d.dividend_per_share ? d.dividend_per_share.toLocaleString() + " ៛" : "N/A"
+          "Dividend Per Share": effectiveDPS ? effectiveDPS.toLocaleString() + " ៛" : "N/A"
         }
       };
 
       renderRatioTables(globalRatios);
-      renderCalculationBalances(d);
+      // STRICT: Passes unmutated rawExtractedData to audit only file figures
+      renderCalculationBalances(rawExtractedData, multiplier);
       renderElaboration({
         industry: industryType,
         evEbitda: parseFloat(evEbitdaDisplay),
@@ -488,42 +492,43 @@
       }
     }
 
-    // STRICT AUDIT: Direct line items extracted from the uploaded document ONLY
-    function renderCalculationBalances(d) {
+    // STRICT AUDIT TABLE: Reads ONLY the verbatim values parsed from the document
+    function renderCalculationBalances(rawFile, multiplier) {
       const container = document.getElementById("extractedDataView");
-      if (!container) return;
+      if (!container || !rawFile) return;
 
       const fileExtractedItems = {
-        "Revenue / ផលរបរ": d.revenue,
-        "Gross Profit / ចំណេញដុល": d.gross_profit,
-        "Operating Income / EBIT / ចំណេញប្រតិបត្តិការ": d.operating_income,
-        "Depreciation & Amortization / ចំណាយរំលស់": d.depreciation_amortization,
-        "Interest Expense / ចំណាយការប្រាក់": d.interest_expense,
-        "Tax Expense / ចំណាយពន្ធ": d.tax_expense,
-        "Net Income / ចំណេញសុទ្ធ": d.net_income,
-        "Cash & Cash Equivalents / សាច់ប្រាក់សមមូល": d.cash_and_equivalents,
-        "Current Assets / ទ្រព្យសកម្មចរន្ត": d.current_assets,
-        "Current Liabilities / បំណុលចរន្ត": d.current_liabilities,
-        "Interest-Bearing Debt / បំណុលមានការប្រាក់": d.interest_bearing_debt,
-        "Total Liabilities / បំណុលសរុប": d.total_liabilities,
-        "Total Assets / ទ្រព្យសកម្មសរុប": d.total_assets,
-        "Beginning Assets (Prior Year) / ទ្រព្យសកម្មដើមគ្រា": d.beginning_assets,
-        "Total Equity / មូលធនសរុប": d.total_equity,
-        "Beginning Equity (Prior Year) / មូលធនដើមគ្រា": d.beginning_equity,
-        "Reported Shares Outstanding / ចំនួនភាគហ៊ុនក្នុងរបាយការណ៍": d.shares_outstanding,
-        "Total Dividend Disclosed / ភាគលាភសរុប": d.total_dividend,
-        "Dividend Per Share (DPS) Disclosed / ភាគលាភក្នុងមួយភាគហ៊ុន": d.dividend_per_share
+        "Revenue / ផលរបរ": rawFile.revenue,
+        "Gross Profit / ចំណេញដុល": rawFile.gross_profit,
+        "Operating Income / EBIT / ចំណេញប្រតិបត្តិការ": rawFile.operating_income,
+        "Depreciation & Amortization / ចំណាយរំលស់": rawFile.depreciation_amortization,
+        "Interest Expense / ចំណាយការប្រាក់": rawFile.interest_expense,
+        "Tax Expense / ចំណាយពន្ធ": rawFile.tax_expense,
+        "Net Income / ចំណេញសុទ្ធ": rawFile.net_income,
+        "Cash & Cash Equivalents / សាច់ប្រាក់សមមូល": rawFile.cash_and_equivalents,
+        "Current Assets / ទ្រព្យសកម្មចរន្ត": rawFile.current_assets,
+        "Current Liabilities / បំណុលចរន្ត": rawFile.current_liabilities,
+        "Interest-Bearing Debt / បំណុលមានការប្រាក់": rawFile.interest_bearing_debt,
+        "Total Liabilities / បំណុលសរុប": rawFile.total_liabilities,
+        "Total Assets / ទ្រព្យសកម្មសរុប": rawFile.total_assets,
+        "Beginning Assets (Prior Year) / ទ្រព្យសកម្មដើមគ្រា": rawFile.beginning_assets,
+        "Total Equity / មូលធនសរុប": rawFile.total_equity,
+        "Beginning Equity (Prior Year) / មូលធនដើមគ្រា": rawFile.beginning_equity,
+        "Reported Shares Outstanding / ចំនួនភាគហ៊ុនក្នុងរបាយការណ៍": rawFile.shares_outstanding,
+        "Total Dividend Disclosed / ភាគលាភសរុប": rawFile.total_dividend,
+        "Dividend Per Share (DPS) Disclosed / ភាគលាភក្នុងមួយភាគហ៊ុន": rawFile.dividend_per_share
       };
 
       let rows = "";
       for (const [label, val] of Object.entries(fileExtractedItems)) {
         let formatted = '<span class="text-gray-400 italic">Not Disclosed in File</span>';
         
-        if (typeof val === "number" && !isNaN(val)) {
+        if (typeof val === "number" && !isNaN(val) && val !== null) {
           if (label.includes("Shares")) {
             formatted = val.toLocaleString() + " Shares";
           } else {
-            formatted = val.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛";
+            const converted = val * multiplier;
+            formatted = converted.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛";
           }
         }
 

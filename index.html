@@ -264,7 +264,12 @@
 
       try {
         let requestContents = [];
-        const promptInstruction = "Extract the financial statement line items for the latest fiscal year directly as reported. If prior year assets and equity are reported, extract them as beginning_assets and beginning_equity. Differentiate interest_bearing_debt (bonds/loans) from total_liabilities. Normalize all numbers to full units (e.g., multiply millions by 1,000,000). State if figures are reported in USD or KHR.";
+        const promptInstruction = 
+          "Extract ONLY the explicit, officially reported financial statement line items for the latest fiscal year directly as reported in the attached file. " +
+          "DO NOT calculate, deduce, or estimate any figure that is not stated verbatim in the document; return null for any missing item. " +
+          "Extract beginning_assets and beginning_equity ONLY if prior year balances are explicitly stated in the comparative columns. " +
+          "Differentiate interest_bearing_debt (bonds/bank loans/lease obligations) from total liabilities. " +
+          "Normalize numbers to full units (e.g. multiply millions by 1,000,000). State if figures are reported in USD or KHR.";
 
         if (file.name.endsWith(".docx")) {
           statusDiv.textContent = "Extracting Word text...";
@@ -483,10 +488,11 @@
       }
     }
 
+    // STRICT AUDIT: Direct line items extracted from the uploaded document ONLY
     function renderCalculationBalances(d) {
       const container = document.getElementById("extractedDataView");
       if (!container) return;
-      
+
       const fileExtractedItems = {
         "Revenue / ផលរបរ": d.revenue,
         "Gross Profit / ចំណេញដុល": d.gross_profit,
@@ -498,23 +504,29 @@
         "Cash & Cash Equivalents / សាច់ប្រាក់សមមូល": d.cash_and_equivalents,
         "Current Assets / ទ្រព្យសកម្មចរន្ត": d.current_assets,
         "Current Liabilities / បំណុលចរន្ត": d.current_liabilities,
+        "Interest-Bearing Debt / បំណុលមានការប្រាក់": d.interest_bearing_debt,
         "Total Liabilities / បំណុលសរុប": d.total_liabilities,
         "Total Assets / ទ្រព្យសកម្មសរុប": d.total_assets,
         "Beginning Assets (Prior Year) / ទ្រព្យសកម្មដើមគ្រា": d.beginning_assets,
         "Total Equity / មូលធនសរុប": d.total_equity,
         "Beginning Equity (Prior Year) / មូលធនដើមគ្រា": d.beginning_equity,
         "Reported Shares Outstanding / ចំនួនភាគហ៊ុនក្នុងរបាយការណ៍": d.shares_outstanding,
-        "Total Dividend Disclosed / ភាគលាភសរុប": d.total_dividend
+        "Total Dividend Disclosed / ភាគលាភសរុប": d.total_dividend,
+        "Dividend Per Share (DPS) Disclosed / ភាគលាភក្នុងមួយភាគហ៊ុន": d.dividend_per_share
       };
 
       let rows = "";
       for (const [label, val] of Object.entries(fileExtractedItems)) {
-        let formatted = "Not Reported in File";
-        if (typeof val === "number") {
-          formatted = label.includes("Shares") 
-            ? val.toLocaleString() + " Shares"
-            : val.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛";
+        let formatted = '<span class="text-gray-400 italic">Not Disclosed in File</span>';
+        
+        if (typeof val === "number" && !isNaN(val)) {
+          if (label.includes("Shares")) {
+            formatted = val.toLocaleString() + " Shares";
+          } else {
+            formatted = val.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛";
+          }
         }
+
         rows += `
           <tr class="border-b">
             <td class="py-1.5 px-3 font-medium text-xs text-gray-700">${label}</td>
@@ -714,7 +726,6 @@
     function downloadCSV() {
       if (!globalRatios) return;
       
-      // \uFEFF signals UTF-8 to Microsoft Excel so '៛' renders correctly
       let csv = "\uFEFFCategory,Metric,Value\n";
       for (const [category, metrics] of Object.entries(globalRatios)) {
         for (const [metric, val] of Object.entries(metrics)) {

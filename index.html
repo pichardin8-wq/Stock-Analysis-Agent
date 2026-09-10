@@ -134,19 +134,28 @@
       <div id="tablesContainer" class="space-y-5 mb-8"></div>
 
       <!-- Financial Health & Industry Context Elaboration -->
-      <div id="elaborationContainer" class="border border-blue-200 bg-blue-50/60 rounded-xl p-5 mb-8">
-        <h3 class="text-sm font-bold text-blue-950 uppercase tracking-wider mb-2">Automated Financial Diagnostics & Industry Context</h3>
-        <div id="elaborationText" class="text-xs text-gray-800 leading-relaxed space-y-2"></div>
-      </div>
-
-      <details class="bg-gray-50 border rounded-lg p-3 text-xs" open>
-        <summary class="font-semibold text-gray-700 cursor-pointer select-none">
-          Active Calculation Balances (Actual Values Used in Formulas in KHR ៛)
-        </summary>
-        <div id="extractedDataView" class="mt-2 overflow-x-auto"></div>
-      </details>
+      <div id="elaborationContainer" class="border border-gray-200 bg-white rounded-xl p-5 mb-8 shadow-sm">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-gray-200 gap-2">
+    <div>
+      <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Automated Diagnostic & Risk Assessment</h3>
+      <p id="industryBenchmarkNote" class="text-xs text-gray-500 mt-0.5"></p>
+    </div>
+    <!-- Risk Legend -->
+    <div class="flex items-center gap-2 text-[11px] font-semibold select-none">
+      <span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Very Low Risk
+      </span>
+      <span class="inline-flex items-center gap-1 text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Low / Moderate Risk
+      </span>
+      <span class="inline-flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
+        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> High Risk
+      </span>
     </div>
   </div>
+
+  <div id="elaborationList" class="space-y-3 text-xs"></div>
+</div>
 
   <script>
     const USD_TO_KHR = 4000;
@@ -503,54 +512,142 @@
 
     // Item 5 & 6: Detailed diagnostic interpretation by sector
     function renderElaboration(metrics) {
-      const el = document.getElementById("elaborationText");
-      let text = "";
+  const container = document.getElementById("elaborationList");
+  const benchmarkNote = document.getElementById("industryBenchmarkNote");
+  const industryText = document.getElementById("industryType").selectedOptions[0].text;
 
-      // Industry Benchmarks Definition
-      let peerEv = "6.0x – 9.0x";
-      let d2eNorm = "Under 1.0x";
-      if (metrics.industry === "TELECOM_INFRA") {
-        peerEv = "5.5x – 9.0x";
-        d2eNorm = "0.8x – 1.8x (Due to heavy network rollout and towers)";
-      } else if (metrics.industry === "BANKING") {
-        peerEv = "N/A (P/B and ROE prioritized)";
-        d2eNorm = "5.0x – 8.0x (Customer deposits classified as liabilities)";
-      }
+  // Set Industry Benchmark Context Note
+  let peerEv = "6.0x – 9.0x";
+  let d2eNorm = "Under 1.0x";
+  if (metrics.industry === "TELECOM_INFRA") {
+    peerEv = "5.5x – 9.0x";
+    d2eNorm = "0.8x – 1.8x";
+  } else if (metrics.industry === "BANKING") {
+    peerEv = "N/A (Book Value Priority)";
+    d2eNorm = "5.0x – 8.0x (Deposit Liabilities)";
+  } else if (metrics.industry === "MANUFACTURING") {
+    peerEv = "6.0x – 8.5x";
+    d2eNorm = "0.5x – 1.2x";
+  }
+  benchmarkNote.textContent = `Industry: ${industryText} | Benchmark Multiple: ${peerEv} | Expected D/E: ${d2eNorm}`;
 
-      text += `<p><strong>1. Industry Profile Context (${document.getElementById("industryType").selectedOptions[0].text}):</strong> In this industry, typical leverage ratios run at <em>${d2eNorm}</em>, and healthy EV/EBITDA multiples average <em>${peerEv}</em>.</p>`;
-
-      // Valuation Diagnostic
-      if (!isNaN(metrics.evEbitda)) {
-        if (metrics.evEbitda > 15) {
-          text += `<p><strong>2. Valuation Verdict (Expensive Multiples):</strong> The current EV/EBITDA of <strong>${metrics.evEbitda.toFixed(2)}x</strong> indicates the company is priced at a substantial premium relative to its operating cash flow. Investors are paying a premium driven by dividend floors or low trading floats rather than baseline cash earnings.</p>`;
-        } else if (metrics.evEbitda < 8) {
-          text += `<p><strong>2. Valuation Verdict (Favorable Multiples):</strong> An EV/EBITDA of <strong>${metrics.evEbitda.toFixed(2)}x</strong> indicates an attractive takeover multiple, suggesting the company generates strong operating cash relative to its total capitalization.</p>`;
-        } else {
-          text += `<p><strong>2. Valuation Verdict (Fair Value):</strong> EV/EBITDA of <strong>${metrics.evEbitda.toFixed(2)}x</strong> sits comfortably in line with regional peer medians.</p>`;
-        }
-      }
-
-      // ROIC Diagnostic
-      if (!isNaN(metrics.roic)) {
-        if (metrics.roic < 6.0) {
-          text += `<p><strong>3. Capital Efficiency (ROIC of ${metrics.roic.toFixed(2)}%):</strong> Operating profit generated per dollar of invested capital is lower than the typical CSX commercial borrowing cost (7.5% - 8.5%). Capital expenditures (towers, fiber, or factories) have not yet fully scaled into operational profits.</p>`;
-        } else {
-          text += `<p><strong>3. Capital Efficiency (ROIC of ${metrics.roic.toFixed(2)}%):</strong> The business produces solid economic profit above its funding cost, demonstrating effective management capital allocation.</p>`;
-        }
-      }
-
-      // Solvency Diagnostic
-      if (!isNaN(metrics.debtToEquity)) {
-        if (metrics.debtToEquity > 1.5 && metrics.industry !== "BANKING") {
-          text += `<p><strong>4. Leverage Alert:</strong> Debt to Equity sits at <strong>${metrics.debtToEquity.toFixed(2)}x</strong>. Over half of the asset base is funded via obligations. Ensure Interest Coverage (currently <strong>${metrics.intCoverage ? metrics.intCoverage.toFixed(2) + 'x' : 'N/A'}</strong>) stays comfortably above 2.5x to absorb rate increases.</p>`;
-        } else {
-          text += `<p><strong>4. Solvency Health:</strong> Debt to Equity of <strong>${metrics.debtToEquity.toFixed(2)}x</strong> indicates a stable balance sheet with conservative leverage.</p>`;
-        }
-      }
-
-      el.innerHTML = text;
+  // Helper function to build styled diagnostic cards with color-coded risk
+  function buildCard(orderNum, title, valueText, riskLevel, riskLabel, explanation) {
+    let style = "";
+    if (riskLevel === "green") {
+      style = "bg-emerald-50/70 border-emerald-200 text-emerald-950";
+    } else if (riskLevel === "orange") {
+      style = "bg-amber-50/70 border-amber-200 text-amber-950";
+    } else {
+      style = "bg-rose-50/70 border-rose-200 text-rose-950";
     }
 
+    const badgeBg = {
+      green: "bg-emerald-100 text-emerald-800 border-emerald-300",
+      orange: "bg-amber-100 text-amber-800 border-amber-300",
+      red: "bg-rose-100 text-rose-800 border-rose-300"
+    }[riskLevel];
+
+    return `
+      <div class="border rounded-lg p-3.5 ${style} transition">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="font-bold text-gray-900 text-xs">
+            <span class="text-gray-500 font-mono mr-1">${orderNum}.</span> ${title}: 
+            <span class="font-semibold underline ml-1">${valueText}</span>
+          </div>
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${badgeBg}">
+            ${riskLabel}
+          </span>
+        </div>
+        <p class="text-gray-700 text-xs leading-relaxed">${explanation}</p>
+      </div>
+    `;
+  }
+
+  let html = "";
+
+  // -------------------------------------------------------------
+  // Order 1: CSX Capitalization & Valuation (EV/EBITDA)
+  // -------------------------------------------------------------
+  if (!isNaN(metrics.evEbitda)) {
+    let riskLevel = "green";
+    let label = "Very Low Risk (Cheap)";
+    let desc = `An EV/EBITDA multiple of ${metrics.evEbitda.toFixed(2)}x is at or below regional peer medians (${peerEv}), offering downside valuation protection.`;
+
+    if (metrics.evEbitda > 15.0) {
+      riskLevel = "red";
+      label = "High Valuation Risk";
+      desc = `Trading at ${metrics.evEbitda.toFixed(2)}x EV/EBITDA is 2.5x to 3x higher than industry norms (${peerEv}). The market price is supported by dividend guarantees or thin liquidity rather than baseline cash earnings.`;
+    } else if (metrics.evEbitda > 9.5) {
+      riskLevel = "orange";
+      label = "Low / Moderate Risk";
+      desc = `Valuation of ${metrics.evEbitda.toFixed(2)}x carries a slight premium over peer baselines (${peerEv}), requiring sustained top-line revenue expansion to justify pricing.`;
+    }
+    html += buildCard(1, "A. Valuation Multiple (EV/EBITDA)", `${metrics.evEbitda.toFixed(2)}x`, riskLevel, label, desc);
+  }
+
+  // -------------------------------------------------------------
+  // Order 2: Profitability & Capital Efficiency (ROIC)
+  // -------------------------------------------------------------
+  if (!isNaN(metrics.roic)) {
+    let riskLevel = "green";
+    let label = "Very Low Risk (Value Creator)";
+    let desc = `ROIC of ${metrics.roic.toFixed(2)}% comfortably exceeds commercial borrowing and bond yields (~7.5%–8.5%), proving management creates real shareholder economic value.`;
+
+    if (metrics.roic < 5.0) {
+      riskLevel = "red";
+      label = "High Efficiency Risk";
+      desc = `At ${metrics.roic.toFixed(2)}%, the after-tax return on capital is below typical CSX borrowing costs (7.5%–8.5%). Heavy investments (CapEx/towers/systems) have not yet scaled into proportional earnings.`;
+    } else if (metrics.roic < 8.0) {
+      riskLevel = "orange";
+      label = "Low / Moderate Risk";
+      desc = `ROIC of ${metrics.roic.toFixed(2)}% closely matches the cost of capital. Operations cover their funding drag, but surplus economic value creation remains modest.`;
+    }
+    html += buildCard(2, "B. Capital Efficiency (ROIC)", `${metrics.roic.toFixed(2)}%`, riskLevel, label, desc);
+  }
+
+  // -------------------------------------------------------------
+  // Order 3: Solvency & Leverage (Debt to Equity & Interest Coverage)
+  // -------------------------------------------------------------
+  if (!isNaN(metrics.debtToEquity)) {
+    let riskLevel = "green";
+    let label = "Very Low Risk (Safe Leverage)";
+    let desc = `Total obligations at ${metrics.debtToEquity.toFixed(2)}x of equity indicate a sound capital structure with minimal distress probability.`;
+
+    if (metrics.debtToEquity > 1.8 && metrics.industry !== "BANKING") {
+      riskLevel = "red";
+      label = "High Solvency Risk";
+      desc = `Debt to Equity of ${metrics.debtToEquity.toFixed(2)}x indicates the asset base is heavily financed via external obligations. Operating income must remain resilient to service debt.`;
+    } else if (metrics.debtToEquity > 1.2 && metrics.industry !== "BANKING") {
+      riskLevel = "orange";
+      label = "Low / Moderate Risk";
+      desc = `Debt to Equity of ${metrics.debtToEquity.toFixed(2)}x is standard for capital-intensive infrastructure, provided Interest Coverage (currently ${!isNaN(metrics.intCoverage) ? metrics.intCoverage.toFixed(2) + 'x' : 'N/A'}) stays above 2.5x.`;
+    }
+    html += buildCard(3, "C. Solvency & Balance Sheet (D/E)", `${metrics.debtToEquity.toFixed(2)}x`, riskLevel, label, desc);
+  }
+
+  // -------------------------------------------------------------
+  // Order 4: Liquidity & Dividends (Current Ratio & Dividend Yield)
+  // -------------------------------------------------------------
+  if (!isNaN(metrics.currentRatio)) {
+    let riskLevel = "green";
+    let label = "Very Low Risk (Liquid)";
+    let desc = `Current ratio of ${metrics.currentRatio.toFixed(2)}x demonstrates sufficient short-term assets to satisfy upcoming 12-month liabilities without refinancing strain.`;
+
+    if (metrics.currentRatio < 0.8) {
+      riskLevel = "red";
+      label = "High Liquidity Risk";
+      desc = `Current ratio of ${metrics.currentRatio.toFixed(2)}x indicates working capital pressure; short-term dues exceed liquid resources, necessitating credit line roll-overs.`;
+    } else if (metrics.currentRatio < 1.1) {
+      riskLevel = "orange";
+      label = "Low / Moderate Risk";
+      desc = `Current ratio of ${metrics.currentRatio.toFixed(2)}x requires attentive cash flow management, though common among utilities with rapid receivable turnover.`;
+    }
+    html += buildCard(4, "D. Short-Term Liquidity (Current Ratio)", `${metrics.currentRatio.toFixed(2)}x`, riskLevel, label, desc);
+  }
+
+  container.innerHTML = html;
+}
     function downloadCSV() {
       if (!globalRatios) return;
       let csv = "Category,Metric,Value\n";

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="km">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -133,10 +133,46 @@
 
       <div id="tablesContainer" class="space-y-5 mb-8"></div>
 
-      <!-- Financial Health & Industry Context Elaboration -->
-      <div id="elaborationContainer" class="border border-blue-200 bg-blue-50/60 rounded-xl p-5 mb-8">
-        <h3 class="text-sm font-bold text-blue-950 uppercase tracking-wider mb-2">Automated Financial Diagnostics & Industry Context</h3>
-        <div id="elaborationText" class="text-xs text-gray-800 leading-relaxed space-y-2"></div>
+      <!-- Financial Diagnostics: Separated Khmer First, English Second -->
+      <div id="elaborationContainer" class="border border-gray-200 bg-white rounded-xl p-5 mb-8 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-gray-200 gap-2">
+          <div>
+            <h3 class="text-sm font-bold text-gray-900 tracking-wider">
+              ការវិភាគហិរញ្ញវត្ថុ និងវាយតម្លៃកម្រិតហានិភ័យ / Automated Financial Diagnostics
+            </h3>
+            <p id="industryBenchmarkNote" class="text-xs text-gray-500 mt-0.5 font-medium"></p>
+          </div>
+          <!-- Risk Legend -->
+          <div class="flex items-center gap-2 text-[11px] font-semibold select-none">
+            <span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ហានិភ័យទាប / Low Risk
+            </span>
+            <span class="inline-flex items-center gap-1 text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> ហានិភ័យមធ្យម / Moderate
+            </span>
+            <span class="inline-flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> ហានិភ័យខ្ពស់ / High Risk
+            </span>
+          </div>
+        </div>
+
+        <!-- Section 1: Khmer Diagnostics (Displayed First) -->
+        <div class="mb-6">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-base">🇰🇭</span>
+            <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider">ការវាយតម្លៃលម្អិតជាភាសាខ្មែរ (Khmer Diagnostics)</h4>
+          </div>
+          <div id="elaborationKhmerList" class="space-y-3 text-xs"></div>
+        </div>
+
+        <!-- Section 2: English Diagnostics (Displayed Second) -->
+        <div class="pt-6 border-t border-gray-200">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-base">🇬🇧</span>
+            <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider">Detailed Assessment in English</h4>
+          </div>
+          <div id="elaborationEnglishList" class="space-y-3 text-xs"></div>
+        </div>
       </div>
 
       <details class="bg-gray-50 border rounded-lg p-3 text-xs" open>
@@ -259,7 +295,6 @@
       const isUSD = docCurrency.includes("USD") || docCurrency.includes("$");
       const multiplier = isUSD ? USD_TO_KHR : 1.0;
 
-      // Actual numbers used in calculation (all normalized to KHR)
       const d = {};
       for (const [key, val] of Object.entries(rawExtractedData)) {
         if (typeof val === "number" && !key.includes("shares")) {
@@ -305,7 +340,7 @@
       document.getElementById("detectedCurrencyBadge").textContent = `Report: ${docCurrency} | Calculated in KHR (1 USD = 4,000 KHR)`;
 
       // -------------------------------------------------------------
-      // 1. CSX VALUATION & CAPITALIZATION (Item 1 Adjusted)
+      // 1. CSX VALUATION & CAPITALIZATION
       // -------------------------------------------------------------
       let mktCapVal = null, fullMktCapVal = null;
       let mktCapDisplay = "N/A", fullMktCapDisplay = "N/A";
@@ -329,9 +364,7 @@
       const bvps = (listedShares > 0 && adjustedEquity > 0) ? (adjustedEquity / listedShares) : null;
       const pbRatio = (priceInKHR && bvps && bvps > 0) ? (priceInKHR / bvps).toFixed(2) : "N/A";
 
-      // Item 1: Correct EV / EBITDA
-      // EV = Total Market Cap + Total Liabilities (or Debt) - Cash
-      // DENOMINATOR = Operating Income + Depreciation & Amortization
+      // EV / EBITDA
       const ebitda = (d.operating_income || 0) + (d.depreciation_amortization || 0);
       let evDisplay = "N/A", evEbitdaDisplay = "N/A";
       if (fullMktCapVal && ebitda > 0) {
@@ -342,7 +375,7 @@
       }
 
       // -------------------------------------------------------------
-      // 2. ROIC (Item 2 Adjusted: Equity + Liabilities - Cash)
+      // 2. ROIC (Invested Capital: Equity + Liabilities - Cash)
       // -------------------------------------------------------------
       const taxBase = (d.operating_income || 0) - (d.interest_expense || 0);
       const effTax = (taxBase > 0 && d.tax_expense) ? Math.min(Math.max(d.tax_expense / taxBase, 0), 0.35) : 0.20;
@@ -353,8 +386,7 @@
       const roic = investedCap > 0 ? ((nopat / investedCap) * 100).toFixed(2) + "%" : "N/A";
 
       // -------------------------------------------------------------
-      // 3. SOLVENCY & LEVERAGE (Item 3 Adjusted)
-      // Standard CSX Rule: Total Liabilities / Total Equity & Total Liabilities / Total Assets
+      // 3. SOLVENCY & LEVERAGE
       // -------------------------------------------------------------
       const totalLiab = d.total_liabilities || 0;
       const debtToEquity = (d.total_equity && d.total_equity > 0) ? (totalLiab / d.total_equity).toFixed(2) + "x" : "N/A";
@@ -450,6 +482,7 @@
 
     function renderRatioTables(ratios) {
       const container = document.getElementById("tablesContainer");
+      if (!container) return;
       container.innerHTML = "";
       for (const [category, metrics] of Object.entries(ratios)) {
         let rows = "";
@@ -468,9 +501,9 @@
       }
     }
 
-    // Item 4: Displays the exact normalized numbers used inside the mathematical formulas
     function renderCalculationBalances(d, investedCap, ebitda, nopat) {
       const container = document.getElementById("extractedDataView");
+      if (!container) return;
       const calculationItems = {
         "Revenue (ផលរបរ)": d.revenue,
         "Gross Profit (ចំណេញដុល)": d.gross_profit,
@@ -501,54 +534,191 @@
       container.innerHTML = `<table class="w-full text-xs"><tbody>${rows}</tbody></table>`;
     }
 
-    // Item 5 & 6: Detailed diagnostic interpretation by sector
     function renderElaboration(metrics) {
-      const el = document.getElementById("elaborationText");
-      let text = "";
+      const khmerContainer = document.getElementById("elaborationKhmerList");
+      const englishContainer = document.getElementById("elaborationEnglishList");
+      const benchmarkNote = document.getElementById("industryBenchmarkNote");
+      if (!khmerContainer || !englishContainer || !benchmarkNote) return;
 
-      // Industry Benchmarks Definition
+      const industrySelect = document.getElementById("industryType");
+      const industryText = industrySelect.selectedOptions[0].text;
+
       let peerEv = "6.0x – 9.0x";
-      let d2eNorm = "Under 1.0x";
+      let d2eNorm = "ក្រោម 1.0x (Under 1.0x)";
       if (metrics.industry === "TELECOM_INFRA") {
         peerEv = "5.5x – 9.0x";
-        d2eNorm = "0.8x – 1.8x (Due to heavy network rollout and towers)";
+        d2eNorm = "0.8x – 1.8x";
       } else if (metrics.industry === "BANKING") {
-        peerEv = "N/A (P/B and ROE prioritized)";
-        d2eNorm = "5.0x – 8.0x (Customer deposits classified as liabilities)";
+        peerEv = "N/A (P/B Priority)";
+        d2eNorm = "5.0x – 8.0x";
+      } else if (metrics.industry === "MANUFACTURING") {
+        peerEv = "6.0x – 8.5x";
+        d2eNorm = "0.5x – 1.2x";
       }
 
-      text += `<p><strong>1. Industry Profile Context (${document.getElementById("industryType").selectedOptions[0].text}):</strong> In this industry, typical leverage ratios run at <em>${d2eNorm}</em>, and healthy EV/EBITDA multiples average <em>${peerEv}</em>.</p>`;
+      benchmarkNote.textContent = `វិស័យ / Industry: ${industryText} | EV/EBITDA ស្តង់ដារ: ${peerEv} | បំណុលសមស្រប (D/E): ${d2eNorm}`;
 
-      // Valuation Diagnostic
+      // Single Card Builder for Strict Language Separation
+      function createCard(orderNum, title, valueText, riskLevel, badgeText, description) {
+        let cardBg = "";
+        if (riskLevel === "green") {
+          cardBg = "bg-emerald-50/70 border-emerald-200 text-emerald-950";
+        } else if (riskLevel === "orange") {
+          cardBg = "bg-amber-50/70 border-amber-200 text-amber-950";
+        } else {
+          cardBg = "bg-rose-50/70 border-rose-200 text-rose-950";
+        }
+
+        const badgeBg = {
+          green: "bg-emerald-100 text-emerald-800 border-emerald-300",
+          orange: "bg-amber-100 text-amber-800 border-amber-300",
+          red: "bg-rose-100 text-rose-800 border-rose-300"
+        }[riskLevel];
+
+        return `
+          <div class="border rounded-xl p-3.5 ${cardBg} transition shadow-sm">
+            <div class="flex items-center justify-between mb-2">
+              <div class="font-bold text-gray-900 text-xs sm:text-sm">
+                <span class="text-gray-500 font-mono mr-1">${orderNum}.</span>
+                ${title}: <span class="font-bold underline ml-1">${valueText}</span>
+              </div>
+              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${badgeBg}">
+                ${badgeText}
+              </span>
+            </div>
+            <p class="text-gray-800 text-xs leading-relaxed">${description}</p>
+          </div>
+        `;
+      }
+
+      let khmerHtml = "";
+      let englishHtml = "";
+
+      // Order 0: Industry Profile Baseline
+      khmerHtml += createCard(
+        0,
+        "បរិបទស្តង់ដារនៃវិស័យ (Industry Benchmark)",
+        industryText,
+        "green",
+        "សូចនាករយោង (Neutral)",
+        `វិស័យនេះត្រូវការទុនទិញសម្ភារៈ និងឧបករណ៍ប្រតិបត្តិការធំធេង។ ជាទូទៅ ក្រុមហ៊ុនមានកាតព្វកិច្ចបំណុលចន្លោះពី <strong>${d2eNorm}</strong> នៃទុនផ្ទាល់ខ្លួន ហើយជួញដូរលើផ្សារក្នុងកម្រិត <strong>${peerEv}</strong> នៃលំហូរសាច់ប្រាក់ប្រតិបត្តិការ (EV/EBITDA)។`
+      );
+
+      englishHtml += createCard(
+        0,
+        "Industry Profile Context",
+        industryText,
+        "green",
+        "Neutral Benchmark",
+        `Capital-intensive sectors require heavy hardware and infrastructure. Typically, operators carry leverage of <strong>${d2eNorm}</strong> and trade at <strong>${peerEv} EV/EBITDA</strong>.`
+      );
+
+      // Order 1: CSX Capitalization & Valuation (EV/EBITDA)
       if (!isNaN(metrics.evEbitda)) {
-        if (metrics.evEbitda > 15) {
-          text += `<p><strong>2. Valuation Verdict (Expensive Multiples):</strong> The current EV/EBITDA of <strong>${metrics.evEbitda.toFixed(2)}x</strong> indicates the company is priced at a substantial premium relative to its operating cash flow. Investors are paying a premium driven by dividend floors or low trading floats rather than baseline cash earnings.</p>`;
-        } else if (metrics.evEbitda < 8) {
-          text += `<p><strong>2. Valuation Verdict (Favorable Multiples):</strong> An EV/EBITDA of <strong>${metrics.evEbitda.toFixed(2)}x</strong> indicates an attractive takeover multiple, suggesting the company generates strong operating cash relative to its total capitalization.</p>`;
-        } else {
-          text += `<p><strong>2. Valuation Verdict (Fair Value):</strong> EV/EBITDA of <strong>${metrics.evEbitda.toFixed(2)}x</strong> sits comfortably in line with regional peer medians.</p>`;
+        let riskLevel = "green";
+        let badgeKh = "ហានិភ័យទាប (តម្លៃថោក)";
+        let badgeEn = "Very Low Risk (Cheap)";
+        let descKh = `អនុបាត EV/EBITDA ត្រឹម <strong>${metrics.evEbitda.toFixed(2)}x</strong> គឺទាប ឬស្មើនឹងមធ្យមភាគក្នុងតំបន់ (${peerEv})។ តម្លៃភាគហ៊ុនស្ថិតក្នុងកម្រិតថោកសមរម្យ និងមានសុវត្ថិភាពខ្ពស់ក្នុងការវិនិយោគ។`;
+        let descEn = `An EV/EBITDA multiple of <strong>${metrics.evEbitda.toFixed(2)}x</strong> is at or below regional peer benchmarks (${peerEv}), offering downside valuation protection.`;
+
+        if (metrics.evEbitda > 15.0) {
+          riskLevel = "red";
+          badgeKh = "ហានិភ័យខ្ពស់ (តម្លៃថ្លៃខ្លាំង)";
+          badgeEn = "High Valuation Risk (Expensive)";
+          descKh = `តម្លៃភាគហ៊ុននៅលើផ្សារបច្ចុប្បន្នស្ថិតក្នុងកម្រិត <strong>ថ្លៃខ្លាំង (${metrics.evEbitda.toFixed(2)}x)</strong>។ អ្នកវិនិយោគកំពុងទិញភាគហ៊ុនក្នុងតម្លៃថ្លៃជាងក្រុមហ៊ុនទូរគមនាគមន៍ដទៃដល់ទៅ ២ ទៅ ៣ ដង ធៀបនឹងសាច់ប្រាក់ប្រតិបត្តិការដែលក្រុមហ៊ុនរកបាន។ តម្លៃនេះនៅខ្ពស់ដោយសារតែភាគហ៊ុនស្ទើរតែទាំងអស់ (៩៨,៥%) ត្រូវបានកាន់កាប់ដោយក្រុមហ៊ុនមេ (Royal Millicom) គួបផ្សំនឹងការធានាភាគលាភ ៧% មិនមែនមកពីកំណើនសាច់ប្រាក់ពិតប្រាកដនោះទេ។`;
+          descEn = `The stock is <strong>very expensive (${metrics.evEbitda.toFixed(2)}x)</strong>. Investors are paying 2.5x to 3x higher multiples than regional peers (${peerEv}) relative to core operating cash flows. This premium is sustained by a tight float (~98.5% parent ownership) and a guaranteed 7% dividend floor rather than fundamental cash growth.`;
+        } else if (metrics.evEbitda > 9.5) {
+          riskLevel = "orange";
+          badgeKh = "ហានិភ័យមធ្យម (ថ្លៃបង្គួរ)";
+          badgeEn = "Low / Moderate Risk";
+          descKh = `អនុបាត <strong>${metrics.evEbitda.toFixed(2)}x</strong> គឺខ្ពស់ជាងមធ្យមភាគបន្តិច (${peerEv})។ ក្រុមហ៊ុនត្រូវការបង្កើនប្រាក់ចំណូលបន្ថែមទៀត ដើម្បីគាំទ្រដល់តម្លៃភាគហ៊ុនកម្រិតនេះ។`;
+          descEn = `Trading at <strong>${metrics.evEbitda.toFixed(2)}x</strong> carries a slight premium over peer baselines (${peerEv}), requiring sustained top-line revenue expansion to justify pricing.`;
         }
+
+        khmerHtml += createCard(1, "ការវាយតម្លៃថ្លៃដើមទុន (EV/EBITDA)", `${metrics.evEbitda.toFixed(2)}x`, riskLevel, badgeKh, descKh);
+        englishHtml += createCard(1, "Valuation Multiple (EV/EBITDA)", `${metrics.evEbitda.toFixed(2)}x`, riskLevel, badgeEn, descEn);
       }
 
-      // ROIC Diagnostic
+      // Order 2: Capital Efficiency (ROIC)
       if (!isNaN(metrics.roic)) {
-        if (metrics.roic < 6.0) {
-          text += `<p><strong>3. Capital Efficiency (ROIC of ${metrics.roic.toFixed(2)}%):</strong> Operating profit generated per dollar of invested capital is lower than the typical CSX commercial borrowing cost (7.5% - 8.5%). Capital expenditures (towers, fiber, or factories) have not yet fully scaled into operational profits.</p>`;
-        } else {
-          text += `<p><strong>3. Capital Efficiency (ROIC of ${metrics.roic.toFixed(2)}%):</strong> The business produces solid economic profit above its funding cost, demonstrating effective management capital allocation.</p>`;
+        let riskLevel = "green";
+        let badgeKh = "ហានិភ័យទាប (ប្រសិទ្ធភាពទុនខ្ពស់)";
+        let badgeEn = "Very Low Risk (Value Creator)";
+        let descKh = `ក្រុមហ៊ុនបង្កើតផលចំណេញបាន <strong>${metrics.roic.toFixed(2)}%</strong> ពីទុនវិនិយោគ ដែលខ្ពស់ជាងអត្រាការប្រាក់កម្ចីធនាគារ (៧,៥% - ៨,៥%)។ នេះបញ្ជាក់ថាការគ្រប់គ្រងទុនមានប្រសិទ្ធភាព និងបង្កើតតម្លៃពិតប្រាកដដល់ម្ចាស់ភាគហ៊ុន។`;
+        let descEn = `ROIC of <strong>${metrics.roic.toFixed(2)}%</strong> comfortably clears commercial borrowing costs (~7.5%–8.5%), indicating that management creates real shareholder economic value.`;
+
+        if (metrics.roic < 5.0) {
+          riskLevel = "red";
+          badgeKh = "ហានិភ័យខ្ពស់ (ផលចំណេញទាប)";
+          badgeEn = "High Efficiency Risk (Low Return)";
+          descKh = `ប្រសិទ្ធភាពទុននៅ <strong>ទាបខ្លាំង (${metrics.roic.toFixed(2)}%)</strong>។ ក្រុមហ៊ុនរកផលចំណេញសុទ្ធបានត្រឹមតែ <strong>${metrics.roic.toFixed(2)} រៀលប៉ុណ្ណោះ ពីទុនវិនិយោគរៀងរាល់ ១០០ រៀល</strong> ដែលដាក់ចូលក្នុងអាជីវកម្ម។ កម្រិតនេះទាបជាងការប្រាក់កម្ចីធនាគារ និងសញ្ញាប័ណ្ណដែលត្រូវបង់ (ប្រមាណ ៧,៧៥%)។ នេះបង្ហាញថាការចំណាយទុនយ៉ាងច្រើនលើប្រព័ន្ធ 5G និងខ្សែកាបកន្លងមក មិនទាន់បង្កើតផលចំណេញត្រឡប់មកវិញសមស្របនៅឡើយទេ។`;
+          descEn = `Capital efficiency is <strong>weak (${metrics.roic.toFixed(2)}%)</strong>. The core business generates only <strong>$${metrics.roic.toFixed(2)} of after-tax operating profit for every $100</strong> tied up in operations, which is far below its ~7.75% bond/debt borrowing cost. Heavy capital expenditures (5G deployment and fiber networks) have not yet scaled into proportional earnings.`;
+        } else if (metrics.roic < 8.0) {
+          riskLevel = "orange";
+          badgeKh = "ហានិភ័យមធ្យម (ផលចំណេញមធ្យម)";
+          badgeEn = "Low / Moderate Risk";
+          descKh = `ផលចំណេញពីទុនវិនិយោគ <strong>${metrics.roic.toFixed(2)}%</strong> គឺប្រហាក់ប្រហែលនឹងការប្រាក់កម្ចី។ ក្រុមហ៊ុនអាចរកចំណូលទូទាត់ការប្រាក់បាន ប៉ុន្តែមិនទាន់បង្កើតផលចំណេញលើសលុបសម្រាប់ម្ចាស់ភាគហ៊ុននៅឡើយ។`;
+          descEn = `ROIC of <strong>${metrics.roic.toFixed(2)}%</strong> closely matches funding costs. Operations cover financing expenses, but surplus economic value creation remains modest.`;
         }
+
+        khmerHtml += createCard(2, "ប្រសិទ្ធភាពនៃការបង្កើតប្រាក់ចំណេញពីដើមទុន (ROIC)", `${metrics.roic.toFixed(2)}%`, riskLevel, badgeKh, descKh);
+        englishHtml += createCard(2, "Capital Efficiency (ROIC)", `${metrics.roic.toFixed(2)}%`, riskLevel, badgeEn, descEn);
       }
 
-      // Solvency Diagnostic
+      // Order 3: Solvency & Leverage (Debt to Equity & Interest Coverage)
       if (!isNaN(metrics.debtToEquity)) {
-        if (metrics.debtToEquity > 1.5 && metrics.industry !== "BANKING") {
-          text += `<p><strong>4. Leverage Alert:</strong> Debt to Equity sits at <strong>${metrics.debtToEquity.toFixed(2)}x</strong>. Over half of the asset base is funded via obligations. Ensure Interest Coverage (currently <strong>${metrics.intCoverage ? metrics.intCoverage.toFixed(2) + 'x' : 'N/A'}</strong>) stays comfortably above 2.5x to absorb rate increases.</p>`;
-        } else {
-          text += `<p><strong>4. Solvency Health:</strong> Debt to Equity of <strong>${metrics.debtToEquity.toFixed(2)}x</strong> indicates a stable balance sheet with conservative leverage.</p>`;
+        let riskLevel = "green";
+        let badgeKh = "ហានិភ័យទាប (បំណុលមានសុវត្ថិភាព)";
+        let badgeEn = "Very Low Risk (Safe Leverage)";
+        let descKh = `កម្រិតបំណុលធៀបនឹងទុនផ្ទាល់ខ្លួន (<strong>${metrics.debtToEquity.toFixed(2)} ដង</strong>) គឺទាប និងមានសុវត្ថិភាពខ្ពស់ គ្មានហានិភ័យផ្នែកហិរញ្ញវត្ថុឡើយ។`;
+        let descEn = `Total obligations at <strong>${metrics.debtToEquity.toFixed(2)}x equity</strong> indicate a sound capital structure with minimal distress probability.`;
+
+        if (metrics.debtToEquity > 1.8 && metrics.industry !== "BANKING") {
+          riskLevel = "red";
+          badgeKh = "ហានិភ័យខ្ពស់ (បំណុលច្រើន)";
+          badgeEn = "High Solvency Risk";
+          descKh = `ក្រុមហ៊ុនមានបំណុលខ្ពស់ (<strong>${metrics.debtToEquity.toFixed(2)} ដង</strong> នៃទុនផ្ទាល់ខ្លួន)។ ទ្រព្យសកម្មភាគច្រើនពឹងផ្អែកលើបំណុល ដែលទាមទារឱ្យប្រាក់ចំណេញពីប្រតិបត្តិការរក្សាស្ថិរភាពខ្ពស់ដើម្បីសងត្រឡប់។`;
+          descEn = `Debt to Equity of <strong>${metrics.debtToEquity.toFixed(2)}x</strong> indicates heavy external obligations funding the asset base. Operating profit must remain stable to service debt without strain.`;
+        } else if (metrics.debtToEquity > 1.2 && metrics.industry !== "BANKING") {
+          riskLevel = "orange";
+          badgeKh = "ហានិភ័យមធ្យមទៅខ្ពស់";
+          badgeEn = "Moderate to High Risk";
+          descKh = `ក្រុមហ៊ុនមានកាតព្វកិច្ចបំណុល <strong>${metrics.debtToEquity.toFixed(2)} រៀល សម្រាប់រាល់ទុនផ្ទាល់ខ្លួន ១,០០ រៀល</strong>។ កម្រិតនេះអាចទទួលយកបានសម្រាប់វិស័យទូរគមនាគមន៍ ប៉ុន្តែចំណុចប្រុងប្រយ័ត្នគឺ <strong>លទ្ធភាពសងការប្រាក់ (Interest Coverage) មានត្រឹមតែ ${!isNaN(metrics.intCoverage) ? metrics.intCoverage.toFixed(2) + ' ដង' : 'N/A'}</strong> ដែលមានន័យថា ប្រាក់ចំណេញប្រតិបត្តិការស្ទើរតែមិនគ្រប់គ្រាន់ដើម្បីទូទាត់ការប្រាក់កម្ចីធនាគារ និងម្ចាស់សញ្ញាប័ណ្ណឡើយ។`;
+          descEn = `The company owes <strong>$${metrics.debtToEquity.toFixed(2)} of obligations for every $1.00 of equity</strong>. While normal for telecoms, the key concern is <strong>Interest Coverage of ${!isNaN(metrics.intCoverage) ? metrics.intCoverage.toFixed(2) + 'x' : 'N/A'}</strong>: operating income barely covers debt service and bond coupons.`;
         }
+
+        khmerHtml += createCard(3, "បន្ទុកបំណុល និងលទ្ធភាពសងការប្រាក់ (D/E)", `${metrics.debtToEquity.toFixed(2)}x`, riskLevel, badgeKh, descKh);
+        englishHtml += createCard(3, "Solvency & Leverage (D/E)", `${metrics.debtToEquity.toFixed(2)}x`, riskLevel, badgeEn, descEn);
       }
 
-      el.innerHTML = text;
+      // Order 4: Liquidity & Working Capital (Current Ratio)
+      if (!isNaN(metrics.currentRatio)) {
+        let riskLevel = "green";
+        let badgeKh = "ហានិភ័យទាប (សន្ទនីយភាពគ្រប់គ្រាន់)";
+        let badgeEn = "Very Low Risk (Liquid)";
+        let descKh = `អនុបាតចរន្ត <strong>${metrics.currentRatio.toFixed(2)} ដង</strong> បង្ហាញថាក្រុមហ៊ុនមានទ្រព្យសកម្មរហ័សគ្រប់គ្រាន់ដើម្បីសងបំណុលរយៈពេលខ្លីក្នុងរយៈពេល ១២ ខែខាងមុខ ដោយគ្មានបញ្ហាខ្វះសាច់ប្រាក់ឡើយ។`;
+        let descEn = `A current ratio of <strong>${metrics.currentRatio.toFixed(2)}x</strong> demonstrates sufficient short-term liquid assets to meet upcoming 12-month liabilities comfortably.`;
+
+        if (metrics.currentRatio < 0.8) {
+          riskLevel = "red";
+          badgeKh = "ហានិភ័យខ្ពស់ (ខ្វះសាច់ប្រាក់ខ្លី)";
+          badgeEn = "High Liquidity Risk";
+          descKh = `អនុបាតចរន្តទាប (<strong>${metrics.currentRatio.toFixed(2)} ដង</strong>) បង្ហាញពីសម្ពាធសាច់ប្រាក់រយៈពេលខ្លី។ បំណុលដែលត្រូវសងក្នុងរយៈពេល ១ ឆ្នាំខាងមុខ មានចំនួនច្រើនជាងសាច់ប្រាក់ដែលអាចរកបានភ្លាមៗ។`;
+          descEn = `A current ratio of <strong>${metrics.currentRatio.toFixed(2)}x</strong> indicates working capital pressure; upcoming 12-month obligations exceed available current assets.`;
+        } else if (metrics.currentRatio < 1.1) {
+          riskLevel = "orange";
+          badgeKh = "ហានិភ័យមធ្យម (ត្រូវតាមដានសាច់ប្រាក់)";
+          badgeEn = "Low / Moderate Risk";
+          descKh = `អនុបាតចរន្ត <strong>${metrics.currentRatio.toFixed(2)} ដង</strong> តម្រូវឱ្យមានការគ្រប់គ្រងលំហូរសាច់ប្រាក់ឱ្យបានហ្មត់ចត់ ទោះបីជាជារឿងធម្មតាសម្រាប់ក្រុមហ៊ុនសេវាកម្មដែលប្រមូលលុយបានលឿនក៏ដោយ។`;
+          descEn = `A current ratio of <strong>${metrics.currentRatio.toFixed(2)}x</strong> requires close cash monitoring, though common for recurring-revenue utilities with rapid customer collections.`;
+        }
+
+        khmerHtml += createCard(4, "សន្ទនីយភាពរយៈពេលខ្លី (Current Ratio)", `${metrics.currentRatio.toFixed(2)}x`, riskLevel, badgeKh, descKh);
+        englishHtml += createCard(4, "Short-Term Liquidity (Current Ratio)", `${metrics.currentRatio.toFixed(2)}x`, riskLevel, badgeEn, descEn);
+      }
+
+      khmerContainer.innerHTML = khmerHtml;
+      englishContainer.innerHTML = englishHtml;
     }
 
     function downloadCSV() {

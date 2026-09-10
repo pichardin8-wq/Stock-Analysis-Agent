@@ -56,9 +56,9 @@
         </div>
       </div>
       <div>
-        <label class="block text-xs font-semibold text-gray-700 mb-1">Dividend Per Share (DPS)</label>
+        <label class="block text-xs font-semibold text-gray-700 mb-1">Market DPS (Optional)</label>
         <div class="flex">
-          <input id="manualDPS" type="number" step="any" placeholder="e.g. 158.9" oninput="executeCalculations()" class="w-2/3 border rounded-l-lg p-2 text-xs" />
+          <input id="manualDPS" type="number" step="any" placeholder="Auto from file" oninput="executeCalculations()" class="w-2/3 border rounded-l-lg p-2 text-xs" />
           <select id="dpsCurrency" onchange="executeCalculations()" class="w-1/3 border-t border-b border-r rounded-r-lg p-1 text-xs bg-gray-50">
             <option value="KHR" selected>KHR</option>
             <option value="USD">USD</option>
@@ -66,47 +66,6 @@
         </div>
       </div>
     </div>
-
-    <!-- CSX Specific Inputs Accordion -->
-    <details class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-      <summary class="text-xs font-bold text-blue-900 cursor-pointer select-none">
-        CSX Custom Parameters (Share Counts, Overrides & Prior Year Balances in KHR)
-      </summary>
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mt-3">
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">Listed Shares Count</label>
-          <input id="listedShares" type="number" step="any" placeholder="Shares on CSX" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">Non-Listed Shares Count</label>
-          <input id="nonListedShares" type="number" step="any" placeholder="Unlisted / SOE shares" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">Total Dividend Paid (KHR)</label>
-          <input id="totalDividend" type="number" step="any" placeholder="For Payout Ratio" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">Beg. Assets (KHR)</label>
-          <input id="begAssets" type="number" step="any" placeholder="Prior Year Assets" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">Beg. Equity (KHR)</label>
-          <input id="begEquity" type="number" step="any" placeholder="Prior Year Equity" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">Current Assets (KHR)</label>
-          <input id="manualCA" type="number" step="any" placeholder="For banks / missing" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">Current Liabilities (KHR)</label>
-          <input id="manualCL" type="number" step="any" placeholder="For banks / missing" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">Invested Capital (KHR Override)</label>
-          <input id="manualIC" type="number" step="any" placeholder="Defaults to Eq + Liab - Cash" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
-        </div>
-      </div>
-    </details>
 
     <div class="mb-5">
       <label class="block text-xs font-semibold text-gray-700 mb-1">Upload Report (PDF or Word .docx)</label>
@@ -156,7 +115,7 @@
           </div>
         </div>
 
-        <!-- Section 1: Khmer Diagnostics (Displayed First) -->
+        <!-- Section 1: Khmer Diagnostics -->
         <div class="mb-6">
           <div class="flex items-center gap-2 mb-3">
             <span class="text-base">🇰🇭</span>
@@ -165,7 +124,7 @@
           <div id="elaborationKhmerList" class="space-y-3 text-xs"></div>
         </div>
 
-        <!-- Section 2: English Diagnostics (Displayed Second) -->
+        <!-- Section 2: English Diagnostics -->
         <div class="pt-6 border-t border-gray-200">
           <div class="flex items-center gap-2 mb-3">
             <span class="text-base">🇬🇧</span>
@@ -175,9 +134,10 @@
         </div>
       </div>
 
+      <!-- Active Calculation Balances: STRICTLY Direct Disclosures from Attached File -->
       <details class="bg-gray-50 border rounded-lg p-3 text-xs" open>
         <summary class="font-semibold text-gray-700 cursor-pointer select-none">
-          Active Calculation Balances (Actual Values Used in Formulas in KHR ៛)
+          Active Calculation Balances (Strictly Disclosed Figures from Document in KHR ៛)
         </summary>
         <div id="extractedDataView" class="mt-2 overflow-x-auto"></div>
       </details>
@@ -244,7 +204,7 @@
 
       try {
         let requestContents = [];
-        const promptInstruction = "Extract the financial statement line items for the latest fiscal year. If prior year assets and equity are reported, extract them as beginning_assets and beginning_equity. Differentiate interest_bearing_debt (bonds/loans) from total_liabilities. Normalize all numbers to full units (e.g., multiply millions by 1,000,000). State if figures are reported in USD or KHR.";
+        const promptInstruction = "Extract the financial statement line items for the latest fiscal year directly as reported. If prior year assets and equity are reported, extract them as beginning_assets and beginning_equity. Differentiate interest_bearing_debt (bonds/loans) from total_liabilities. Normalize all numbers to full units (e.g., multiply millions by 1,000,000). State if figures are reported in USD or KHR.";
 
         if (file.name.endsWith(".docx")) {
           statusDiv.textContent = "Extracting Word text...";
@@ -295,6 +255,7 @@
       const isUSD = docCurrency.includes("USD") || docCurrency.includes("$");
       const multiplier = isUSD ? USD_TO_KHR : 1.0;
 
+      // Convert pure extracted items to KHR
       const d = {};
       for (const [key, val] of Object.entries(rawExtractedData)) {
         if (typeof val === "number" && !key.includes("shares")) {
@@ -304,51 +265,33 @@
         }
       }
 
-      // Read UI Overrides & Selections
+      // Read UI Market Inputs
       const companyType = document.getElementById("companyType").value;
       const industryType = document.getElementById("industryType").value;
       const priceInput = parseFloat(document.getElementById("sharePrice").value);
       const priceCurrency = document.getElementById("priceCurrency").value;
       let priceInKHR = (!isNaN(priceInput) && priceInput > 0) ? (priceCurrency === "USD" ? priceInput * USD_TO_KHR : priceInput) : null;
 
+      // Allow manual override only for market-facing DPS if provided, otherwise strictly use extracted
       const manualDPSInput = parseFloat(document.getElementById("manualDPS").value);
       const dpsCurrency = document.getElementById("dpsCurrency").value;
       if (!isNaN(manualDPSInput) && manualDPSInput >= 0) {
         d.dividend_per_share = (dpsCurrency === "USD") ? manualDPSInput * USD_TO_KHR : manualDPSInput;
       }
 
-      const inputTotalDiv = parseFloat(document.getElementById("totalDividend").value);
-      if (!isNaN(inputTotalDiv)) d.total_dividend = inputTotalDiv;
+      // Strict file-only share count
+      const listedShares = d.shares_outstanding || 0;
 
-      const inputBegAssets = parseFloat(document.getElementById("begAssets").value);
-      if (!isNaN(inputBegAssets)) d.beginning_assets = inputBegAssets;
-
-      const inputBegEquity = parseFloat(document.getElementById("begEquity").value);
-      if (!isNaN(inputBegEquity)) d.beginning_equity = inputBegEquity;
-
-      const manualCA = parseFloat(document.getElementById("manualCA").value);
-      if (!isNaN(manualCA)) d.current_assets = manualCA;
-      const manualCL = parseFloat(document.getElementById("manualCL").value);
-      if (!isNaN(manualCL)) d.current_liabilities = manualCL;
-      const manualIC = parseFloat(document.getElementById("manualIC").value);
-
-      const inputListed = parseFloat(document.getElementById("listedShares").value);
-      const listedShares = (!isNaN(inputListed) && inputListed > 0) ? inputListed : (d.shares_outstanding || 0);
-      const inputNonListed = parseFloat(document.getElementById("nonListedShares").value) || 0;
-      const totalShares = listedShares + inputNonListed;
-
-      document.getElementById("detectedCurrencyBadge").textContent = `Report: ${docCurrency} | Calculated in KHR (1 USD = 4,000 KHR)`;
+      document.getElementById("detectedCurrencyBadge").textContent = `Report: ${docCurrency} | Converted to KHR (1 USD = 4,000 KHR)`;
 
       // -------------------------------------------------------------
       // 1. CSX VALUATION & CAPITALIZATION
       // -------------------------------------------------------------
-      let mktCapVal = null, fullMktCapVal = null;
-      let mktCapDisplay = "N/A", fullMktCapDisplay = "N/A";
+      let mktCapVal = null;
+      let mktCapDisplay = "N/A";
       if (priceInKHR && listedShares > 0) {
         mktCapVal = listedShares * priceInKHR;
-        fullMktCapVal = totalShares * priceInKHR;
         mktCapDisplay = mktCapVal.toLocaleString() + " ៛";
-        fullMktCapDisplay = fullMktCapVal.toLocaleString() + " ៛";
       }
 
       // SOE Equity Adjustments for CSX
@@ -367,22 +310,21 @@
       // EV / EBITDA
       const ebitda = (d.operating_income || 0) + (d.depreciation_amortization || 0);
       let evDisplay = "N/A", evEbitdaDisplay = "N/A";
-      if (fullMktCapVal && ebitda > 0) {
+      if (mktCapVal && ebitda > 0) {
         const debtForEV = (d.interest_bearing_debt > 0) ? d.interest_bearing_debt : (d.total_liabilities || 0);
-        const ev = fullMktCapVal + debtForEV - (d.cash_and_equivalents || 0);
+        const ev = mktCapVal + debtForEV - (d.cash_and_equivalents || 0);
         evDisplay = ev.toLocaleString() + " ៛";
         evEbitdaDisplay = (ev / ebitda).toFixed(2) + "x";
       }
 
       // -------------------------------------------------------------
-      // 2. ROIC (Invested Capital: Equity + Liabilities - Cash)
+      // 2. ROIC
       // -------------------------------------------------------------
       const taxBase = (d.operating_income || 0) - (d.interest_expense || 0);
       const effTax = (taxBase > 0 && d.tax_expense) ? Math.min(Math.max(d.tax_expense / taxBase, 0), 0.35) : 0.20;
       const nopat = (d.operating_income || 0) * (1 - effTax);
       
-      const defaultInvestedCap = (d.total_equity || 0) + (d.total_liabilities || 0) - (d.cash_and_equivalents || 0);
-      const investedCap = !isNaN(manualIC) && manualIC > 0 ? manualIC : defaultInvestedCap;
+      const investedCap = (d.total_equity || 0) + (d.total_liabilities || 0) - (d.cash_and_equivalents || 0);
       const roic = investedCap > 0 ? ((nopat / investedCap) * 100).toFixed(2) + "%" : "N/A";
 
       // -------------------------------------------------------------
@@ -432,8 +374,7 @@
 
       globalRatios = {
         "A. CSX Capitalization & Valuation": {
-          "Free-Float Market Capitalization": mktCapDisplay,
-          "Full Enterprise Market Cap": fullMktCapDisplay,
+          "Market Capitalization": mktCapDisplay,
           "Enterprise Value (EV)": evDisplay,
           "EBITDA (Operating Inc + D&A)": ebitda > 0 ? ebitda.toLocaleString() + " ៛" : "N/A",
           "EV/EBITDA Multiple": evEbitdaDisplay,
@@ -443,8 +384,6 @@
         },
         "B. Capital Efficiency & Profitability": {
           "ROIC (NOPAT / Invested Capital)": roic,
-          "Invested Capital Used (Eq + Liab - Cash)": investedCap > 0 ? investedCap.toLocaleString() + " ៛" : "N/A",
-          "NOPAT (EBIT * [1 - Tax])": nopat > 0 ? nopat.toLocaleString() + " ៛" : "N/A",
           "Return on Equity (ROE)": roe,
           "Return on Assets (ROA)": roa,
           "Gross Margin": grossMargin,
@@ -468,7 +407,7 @@
       };
 
       renderRatioTables(globalRatios);
-      renderCalculationBalances(d, investedCap, ebitda, nopat);
+      renderCalculationBalances(d);
       renderElaboration({
         industry: industryType,
         evEbitda: parseFloat(evEbitdaDisplay),
@@ -501,30 +440,39 @@
       }
     }
 
-    function renderCalculationBalances(d, investedCap, ebitda, nopat) {
+    // STRICT: Displays ONLY the line items retrieved from the document
+    function renderCalculationBalances(d) {
       const container = document.getElementById("extractedDataView");
       if (!container) return;
-      const calculationItems = {
-        "Revenue (ផលរបរ)": d.revenue,
-        "Gross Profit (ចំណេញដុល)": d.gross_profit,
-        "Operating Income / EBIT (ចំណេញប្រតិបត្តិការ)": d.operating_income,
-        "Depreciation & Amortization (ចំណាយរំលស់)": d.depreciation_amortization,
-        "Calculated EBITDA": ebitda,
-        "Calculated NOPAT": nopat,
-        "Tax Expense (ចំណាយពន្ធ)": d.tax_expense,
-        "Interest Expense (ចំណាយហិរញ្ញវត្ថុ/ការប្រាក់)": d.interest_expense,
-        "Net Income (ចំណេញសុទ្ធ)": d.net_income,
-        "Cash & Cash Equivalents (សាច់ប្រាក់សមមូល)": d.cash_and_equivalents,
-        "Total Assets (ទ្រព្យសកម្មសរុប)": d.total_assets,
-        "Total Liabilities (បំណុលសរុប)": d.total_liabilities,
-        "Total Equity (មូលធនសរុប)": d.total_equity,
-        "Calculated Invested Capital (Eq + Liab - Cash)": investedCap,
-        "CSX Listed Shares Count": d.shares_outstanding
+      
+      const fileExtractedItems = {
+        "Revenue / ផលរបរ": d.revenue,
+        "Gross Profit / ចំណេញដុល": d.gross_profit,
+        "Operating Income / EBIT / ចំណេញប្រតិបត្តិការ": d.operating_income,
+        "Depreciation & Amortization / ចំណាយរំលស់": d.depreciation_amortization,
+        "Interest Expense / ចំណាយការប្រាក់": d.interest_expense,
+        "Tax Expense / ចំណាយពន្ធ": d.tax_expense,
+        "Net Income / ចំណេញសុទ្ធ": d.net_income,
+        "Cash & Cash Equivalents / សាច់ប្រាក់សមមូល": d.cash_and_equivalents,
+        "Current Assets / ទ្រព្យសកម្មចរន្ត": d.current_assets,
+        "Current Liabilities / បំណុលចរន្ត": d.current_liabilities,
+        "Total Liabilities / បំណុលសរុប": d.total_liabilities,
+        "Total Assets / ទ្រព្យសកម្មសរុប": d.total_assets,
+        "Beginning Assets (Prior Year) / ទ្រព្យសកម្មដើមគ្រា": d.beginning_assets,
+        "Total Equity / មូលធនសរុប": d.total_equity,
+        "Beginning Equity (Prior Year) / មូលធនដើមគ្រា": d.beginning_equity,
+        "Reported Shares Outstanding / ចំនួនភាគហ៊ុនក្នុងរបាយការណ៍": d.shares_outstanding,
+        "Total Dividend Disclosed / ភាគលាភសរុប": d.total_dividend
       };
 
       let rows = "";
-      for (const [label, val] of Object.entries(calculationItems)) {
-        const formatted = typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛" : (val || "—");
+      for (const [label, val] of Object.entries(fileExtractedItems)) {
+        let formatted = "Not Reported in File";
+        if (typeof val === "number") {
+          formatted = label.includes("Shares") 
+            ? val.toLocaleString() + " Shares"
+            : val.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛";
+        }
         rows += `
           <tr class="border-b">
             <td class="py-1 px-3 font-medium text-xs text-gray-700">${label}</td>
@@ -558,7 +506,6 @@
 
       benchmarkNote.textContent = `វិស័យ / Industry: ${industryText} | EV/EBITDA ស្តង់ដារ: ${peerEv} | បំណុលសមស្រប (D/E): ${d2eNorm}`;
 
-      // Single Card Builder for Strict Language Separation
       function createCard(orderNum, title, valueText, riskLevel, badgeText, description) {
         let cardBg = "";
         if (riskLevel === "green") {
@@ -625,8 +572,8 @@
           riskLevel = "red";
           badgeKh = "ហានិភ័យខ្ពស់ (តម្លៃថ្លៃខ្លាំង)";
           badgeEn = "High Valuation Risk (Expensive)";
-          descKh = `តម្លៃភាគហ៊ុននៅលើផ្សារបច្ចុប្បន្នស្ថិតក្នុងកម្រិត <strong>ថ្លៃខ្លាំង (${metrics.evEbitda.toFixed(2)}x)</strong>។ អ្នកវិនិយោគកំពុងទិញភាគហ៊ុនក្នុងតម្លៃថ្លៃជាងក្រុមហ៊ុនទូរគមនាគមន៍ដទៃដល់ទៅ ២ ទៅ ៣ ដង ធៀបនឹងសាច់ប្រាក់ប្រតិបត្តិការដែលក្រុមហ៊ុនរកបាន។ តម្លៃនេះនៅខ្ពស់ដោយសារតែភាគហ៊ុនស្ទើរតែទាំងអស់ (៩៨,៥%) ត្រូវបានកាន់កាប់ដោយក្រុមហ៊ុនមេ (Royal Millicom) គួបផ្សំនឹងការធានាភាគលាភ ៧% មិនមែនមកពីកំណើនសាច់ប្រាក់ពិតប្រាកដនោះទេ។`;
-          descEn = `The stock is <strong>very expensive (${metrics.evEbitda.toFixed(2)}x)</strong>. Investors are paying 2.5x to 3x higher multiples than regional peers (${peerEv}) relative to core operating cash flows. This premium is sustained by a tight float (~98.5% parent ownership) and a guaranteed 7% dividend floor rather than fundamental cash growth.`;
+          descKh = `តម្លៃភាគហ៊ុននៅលើផ្សារបច្ចុប្បន្នស្ថិតក្នុងកម្រិត <strong>ថ្លៃខ្លាំង (${metrics.evEbitda.toFixed(2)}x)</strong>។ អ្នកវិនិយោគកំពុងទិញភាគហ៊ុនក្នុងតម្លៃថ្លៃជាងក្រុមហ៊ុនទូរគមនាគមន៍ដទៃដល់ទៅ ២ ទៅ ៣ ដង ធៀបនឹងសាច់ប្រាក់ប្រតិបត្តិការដែលក្រុមហ៊ុនរកបាន។`;
+          descEn = `The stock is <strong>very expensive (${metrics.evEbitda.toFixed(2)}x)</strong>. Investors are paying 2.5x to 3x higher multiples than regional peers (${peerEv}) relative to core operating cash flows.`;
         } else if (metrics.evEbitda > 9.5) {
           riskLevel = "orange";
           badgeKh = "ហានិភ័យមធ្យម (ថ្លៃបង្គួរ)";
@@ -651,8 +598,8 @@
           riskLevel = "red";
           badgeKh = "ហានិភ័យខ្ពស់ (ផលចំណេញទាប)";
           badgeEn = "High Efficiency Risk (Low Return)";
-          descKh = `ប្រសិទ្ធភាពទុននៅ <strong>ទាបខ្លាំង (${metrics.roic.toFixed(2)}%)</strong>។ ក្រុមហ៊ុនរកផលចំណេញសុទ្ធបានត្រឹមតែ <strong>${metrics.roic.toFixed(2)} រៀលប៉ុណ្ណោះ ពីទុនវិនិយោគរៀងរាល់ ១០០ រៀល</strong> ដែលដាក់ចូលក្នុងអាជីវកម្ម។ កម្រិតនេះទាបជាងការប្រាក់កម្ចីធនាគារ និងសញ្ញាប័ណ្ណដែលត្រូវបង់ (ប្រមាណ ៧,៧៥%)។ នេះបង្ហាញថាការចំណាយទុនយ៉ាងច្រើនលើប្រព័ន្ធ 5G និងខ្សែកាបកន្លងមក មិនទាន់បង្កើតផលចំណេញត្រឡប់មកវិញសមស្របនៅឡើយទេ។`;
-          descEn = `Capital efficiency is <strong>weak (${metrics.roic.toFixed(2)}%)</strong>. The core business generates only <strong>$${metrics.roic.toFixed(2)} of after-tax operating profit for every $100</strong> tied up in operations, which is far below its ~7.75% bond/debt borrowing cost. Heavy capital expenditures (5G deployment and fiber networks) have not yet scaled into proportional earnings.`;
+          descKh = `ប្រសិទ្ធភាពទុននៅ <strong>ទាបខ្លាំង (${metrics.roic.toFixed(2)}%)</strong>។ ក្រុមហ៊ុនរកផលចំណេញសុទ្ធបានត្រឹមតែ <strong>${metrics.roic.toFixed(2)} រៀលប៉ុណ្ណោះ ពីទុនវិនិយោគរៀងរាល់ ១០០ រៀល</strong> ដែលដាក់ចូលក្នុងអាជីវកម្ម។`;
+          descEn = `Capital efficiency is <strong>weak (${metrics.roic.toFixed(2)}%)</strong>. The core business generates only <strong>$${metrics.roic.toFixed(2)} of after-tax operating profit for every $100</strong> tied up in operations.`;
         } else if (metrics.roic < 8.0) {
           riskLevel = "orange";
           badgeKh = "ហានិភ័យមធ្យម (ផលចំណេញមធ្យម)";
@@ -683,8 +630,8 @@
           riskLevel = "orange";
           badgeKh = "ហានិភ័យមធ្យមទៅខ្ពស់";
           badgeEn = "Moderate to High Risk";
-          descKh = `ក្រុមហ៊ុនមានកាតព្វកិច្ចបំណុល <strong>${metrics.debtToEquity.toFixed(2)} រៀល សម្រាប់រាល់ទុនផ្ទាល់ខ្លួន ១,០០ រៀល</strong>។ កម្រិតនេះអាចទទួលយកបានសម្រាប់វិស័យទូរគមនាគមន៍ ប៉ុន្តែចំណុចប្រុងប្រយ័ត្នគឺ <strong>លទ្ធភាពសងការប្រាក់ (Interest Coverage) មានត្រឹមតែ ${!isNaN(metrics.intCoverage) ? metrics.intCoverage.toFixed(2) + ' ដង' : 'N/A'}</strong> ដែលមានន័យថា ប្រាក់ចំណេញប្រតិបត្តិការស្ទើរតែមិនគ្រប់គ្រាន់ដើម្បីទូទាត់ការប្រាក់កម្ចីធនាគារ និងម្ចាស់សញ្ញាប័ណ្ណឡើយ។`;
-          descEn = `The company owes <strong>$${metrics.debtToEquity.toFixed(2)} of obligations for every $1.00 of equity</strong>. While normal for telecoms, the key concern is <strong>Interest Coverage of ${!isNaN(metrics.intCoverage) ? metrics.intCoverage.toFixed(2) + 'x' : 'N/A'}</strong>: operating income barely covers debt service and bond coupons.`;
+          descKh = `ក្រុមហ៊ុនមានកាតព្វកិច្ចបំណុល <strong>${metrics.debtToEquity.toFixed(2)} រៀល សម្រាប់រាល់ទុនផ្ទាល់ខ្លួន ១,០០ រៀល</strong>។`;
+          descEn = `The company owes <strong>$${metrics.debtToEquity.toFixed(2)} of obligations for every $1.00 of equity</strong>.`;
         }
 
         khmerHtml += createCard(3, "បន្ទុកបំណុល និងលទ្ធភាពសងការប្រាក់ (D/E)", `${metrics.debtToEquity.toFixed(2)}x`, riskLevel, badgeKh, descKh);
@@ -709,8 +656,8 @@
           riskLevel = "orange";
           badgeKh = "ហានិភ័យមធ្យម (ត្រូវតាមដានសាច់ប្រាក់)";
           badgeEn = "Low / Moderate Risk";
-          descKh = `អនុបាតចរន្ត <strong>${metrics.currentRatio.toFixed(2)} ដង</strong> តម្រូវឱ្យមានការគ្រប់គ្រងលំហូរសាច់ប្រាក់ឱ្យបានហ្មត់ចត់ ទោះបីជាជារឿងធម្មតាសម្រាប់ក្រុមហ៊ុនសេវាកម្មដែលប្រមូលលុយបានលឿនក៏ដោយ។`;
-          descEn = `A current ratio of <strong>${metrics.currentRatio.toFixed(2)}x</strong> requires close cash monitoring, though common for recurring-revenue utilities with rapid customer collections.`;
+          descKh = `អនុបាតចរន្ត <strong>${metrics.currentRatio.toFixed(2)} ដង</strong> តម្រូវឱ្យមានការគ្រប់គ្រងលំហូរសាច់ប្រាក់ឱ្យបានហ្មត់ចត់។`;
+          descEn = `A current ratio of <strong>${metrics.currentRatio.toFixed(2)}x</strong> requires close cash monitoring.`;
         }
 
         khmerHtml += createCard(4, "សន្ទនីយភាពរយៈពេលខ្លី (Current Ratio)", `${metrics.currentRatio.toFixed(2)}x`, riskLevel, badgeKh, descKh);

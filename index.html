@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSX Financial Ratio Analyzer (KHR)</title>
-  <!-- Google Fonts: Siemreap (Web version of Khmer OS Siemreap) -->
+  <!-- Google Fonts: Siemreap -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Siemreap&display=swap" rel="stylesheet">
@@ -109,7 +109,7 @@
 
       <div id="tablesContainer" class="space-y-5 mb-8"></div>
 
-      <!-- Financial Diagnostics: Separated Khmer First, English Second -->
+      <!-- Financial Diagnostics -->
       <div id="elaborationContainer" class="border border-gray-200 bg-white rounded-xl p-5 mb-8 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-gray-200 gap-2">
           <div>
@@ -132,7 +132,6 @@
           </div>
         </div>
 
-        <!-- Section 1: Khmer Diagnostics -->
         <div class="mb-6">
           <div class="flex items-center gap-2 mb-3">
             <span class="text-base">🇰🇭</span>
@@ -141,7 +140,6 @@
           <div id="elaborationKhmerList" class="space-y-3 text-xs leading-relaxed"></div>
         </div>
 
-        <!-- Section 2: English Diagnostics -->
         <div class="pt-6 border-t border-gray-200">
           <div class="flex items-center gap-2 mb-3">
             <span class="text-base">🇬🇧</span>
@@ -151,7 +149,7 @@
         </div>
       </div>
 
-      <!-- Active Calculation Balances: STRICTLY Direct Disclosures from Attached File -->
+      <!-- Active Calculation Balances: STRICTLY DISCLOSED IN ATTACHED FILE -->
       <details class="bg-gray-50 border rounded-lg p-3 text-xs" open>
         <summary class="font-semibold text-gray-700 cursor-pointer select-none">
           Active Calculation Balances (Strictly Disclosed Figures from Document in KHR ៛)
@@ -166,7 +164,6 @@
     let globalRatios = null;
     let rawExtractedData = null;
 
-    // --- LocalStorage API Key Management ---
     document.addEventListener("DOMContentLoaded", () => {
       loadStoredApiKey();
     });
@@ -212,31 +209,28 @@
     const financialSchema = {
       type: "OBJECT",
       properties: {
-        currency: { type: "STRING" },
-        revenue: { type: "NUMBER" },
-        gross_profit: { type: "NUMBER" },
-        operating_income: { type: "NUMBER" },
-        depreciation_amortization: { type: "NUMBER" },
-        interest_expense: { type: "NUMBER" },
-        tax_expense: { type: "NUMBER" },
-        net_income: { type: "NUMBER" },
-        cash_and_equivalents: { type: "NUMBER" },
-        marketable_securities: { type: "NUMBER" },
-        receivables: { type: "NUMBER" },
-        inventory: { type: "NUMBER" },
-        current_assets: { type: "NUMBER" },
-        current_liabilities: { type: "NUMBER" },
-        interest_bearing_debt: { type: "NUMBER", description: "Bonds, bank borrowings, loans, lease liabilities" },
-        total_liabilities: { type: "NUMBER", description: "Total liabilities on the balance sheet" },
-        total_assets: { type: "NUMBER" },
-        beginning_assets: { type: "NUMBER" },
-        total_equity: { type: "NUMBER" },
-        beginning_equity: { type: "NUMBER" },
-        shares_outstanding: { type: "NUMBER" },
-        total_dividend: { type: "NUMBER" },
-        dividend_per_share: { type: "NUMBER" }
+        currency: { type: "STRING", description: "Return KHR if tables are in Riel or Million Riel (លានរៀល), or USD if in US Dollars." },
+        revenue: { type: "NUMBER", description: "Exact Total Revenue in full KHR units (e.g. 701,051 Million Riel = 701051000000)" },
+        gross_profit: { type: "NUMBER", description: "Exact Gross Profit in full KHR units" },
+        operating_income: { type: "NUMBER", description: "Operating Income / EBIT in full KHR units (e.g. 139,506 Million Riel = 139506000000)" },
+        depreciation_amortization: { type: "NUMBER", description: "Depreciation & Amortization in full KHR units" },
+        interest_expense: { type: "NUMBER", description: "Finance costs / Interest expense in full KHR units (e.g. 119,607 Million Riel = 119607000000)" },
+        tax_expense: { type: "NUMBER", description: "Income tax expense in full KHR units (e.g. 5,202 Million Riel = 5202000000)" },
+        net_income: { type: "NUMBER", description: "Net Profit for the year in full KHR units (e.g. 15,431 Million Riel = 15431000000)" },
+        cash_and_equivalents: { type: "NUMBER", description: "Cash & cash equivalents in full KHR units" },
+        current_assets: { type: "NUMBER", description: "Current Assets in full KHR units" },
+        current_liabilities: { type: "NUMBER", description: "Current Liabilities in full KHR units" },
+        interest_bearing_debt: { type: "NUMBER", description: "Bonds, loans, borrowings in full KHR units" },
+        total_liabilities: { type: "NUMBER", description: "Total Liabilities in full KHR units (e.g. 1,918,928 Million Riel = 1918928000000)" },
+        total_assets: { type: "NUMBER", description: "Total Assets in full KHR units (e.g. 3,128,675 Million Riel = 3128675000000)" },
+        beginning_assets: { type: "NUMBER", description: "Prior Year Total Assets in full KHR units (e.g. 2,654,962 Million Riel = 2654962000000)" },
+        total_equity: { type: "NUMBER", description: "Total Equity in full KHR units (e.g. 1,209,747 Million Riel = 1209747000000)" },
+        beginning_equity: { type: "NUMBER", description: "Prior Year Total Equity in full KHR units (e.g. 1,197,881 Million Riel = 1197881000000)" },
+        shares_outstanding: { type: "NUMBER", description: "Total shares outstanding in full units (e.g. 1,959,271,206)" },
+        total_dividend: { type: "NUMBER", description: "Total dividend paid / declared in full KHR units" },
+        dividend_per_share: { type: "NUMBER", description: "Dividend per share in full KHR units (e.g. 39.73 or 158.90)" }
       },
-      required: ["revenue", "operating_income", "net_income", "total_assets", "total_liabilities", "total_equity", "shares_outstanding"]
+      required: ["currency", "revenue", "operating_income", "net_income", "total_assets", "total_liabilities", "total_equity", "shares_outstanding"]
     };
 
     function fileToBase64(file) {
@@ -265,11 +259,12 @@
       try {
         let requestContents = [];
         const promptInstruction = 
-          "Extract ONLY the explicit, officially reported financial statement line items for the latest fiscal year directly as reported in the attached file. " +
-          "DO NOT calculate, deduce, extrapolate, or estimate any figure that is not stated verbatim in the document; return null for any missing item. " +
-          "Extract beginning_assets and beginning_equity ONLY if prior year balances are explicitly stated in comparative columns. " +
-          "Differentiate interest_bearing_debt (bonds/bank loans/lease obligations) from total liabilities. " +
-          "Normalize numbers to full units (e.g. multiply millions by 1,000,000). State if figures are reported in USD or KHR.";
+          "CRITICAL ACCURACY INSTRUCTION:\n" +
+          "Extract the EXACT audited financial figures disclosed in the attached document for the latest fiscal year (2025).\n" +
+          "Check the Audited Financial Highlights (ព័ត៌មានហិរញ្ញវត្ថុសង្ខេប) and Audited Financial Statements.\n" +
+          "Notice the reporting currency: If numbers are reported in 'Million Riel (លានរៀល)', MULTIPLY by 1,000,000 to convert to full KHR units. Set currency to 'KHR'.\n" +
+          "Example: Revenue of 701,051 Million Riel must be extracted as 701051000000. Total Assets 3,128,675 Million Riel = 3128675000000.\n" +
+          "Do NOT guess or estimate numbers. If an item is not found, return null.";
 
         if (file.name.endsWith(".docx")) {
           statusDiv.textContent = "Extracting Word text...";
@@ -316,11 +311,11 @@
     function executeCalculations() {
       if (!rawExtractedData) return;
 
-      const docCurrency = (rawExtractedData.currency || "USD").toUpperCase();
-      const isUSD = docCurrency.includes("USD") || docCurrency.includes("$");
-      const multiplier = isUSD ? USD_TO_KHR : 1.0;
+      const docCurrency = (rawExtractedData.currency || "KHR").toUpperCase();
+      // If report is already extracted in KHR, multiplier is 1.0; only multiply by 4,000 if raw numbers are in USD
+      const isPureUSD = docCurrency.includes("USD") || docCurrency.includes("$");
+      const multiplier = isPureUSD ? USD_TO_KHR : 1.0;
 
-      // Internal calculation workspace
       const d = {};
       for (const [key, val] of Object.entries(rawExtractedData)) {
         if (typeof val === "number" && !key.includes("shares")) {
@@ -336,7 +331,6 @@
       const priceCurrency = document.getElementById("priceCurrency").value;
       let priceInKHR = (!isNaN(priceInput) && priceInput > 0) ? (priceCurrency === "USD" ? priceInput * USD_TO_KHR : priceInput) : null;
 
-      // Manual DPS applies ONLY to valuation metrics, not the raw extracted audit table
       const manualDPSInput = parseFloat(document.getElementById("manualDPS").value);
       const dpsCurrency = document.getElementById("dpsCurrency").value;
       let effectiveDPS = d.dividend_per_share;
@@ -346,7 +340,7 @@
 
       const listedShares = d.shares_outstanding || 0;
 
-      document.getElementById("detectedCurrencyBadge").textContent = `Report: ${docCurrency} | Converted to KHR (1 USD = 4,000 KHR)`;
+      document.getElementById("detectedCurrencyBadge").textContent = `Report Currency: ${docCurrency} | Calculated in KHR`;
 
       // 1. Valuation & Cap
       let mktCapVal = null;
@@ -381,7 +375,6 @@
       const taxBase = (d.operating_income || 0) - (d.interest_expense || 0);
       const effTax = (taxBase > 0 && d.tax_expense) ? Math.min(Math.max(d.tax_expense / taxBase, 0), 0.35) : 0.20;
       const nopat = (d.operating_income || 0) * (1 - effTax);
-      
       const investedCap = (d.total_equity || 0) + (d.total_liabilities || 0) - (d.cash_and_equivalents || 0);
       const roic = investedCap > 0 ? ((nopat / investedCap) * 100).toFixed(2) + "%" : "N/A";
 
@@ -420,7 +413,7 @@
       }
 
       const currentRatio = (d.current_assets && d.current_liabilities) ? (d.current_assets / d.current_liabilities).toFixed(2) : "N/A";
-      const quickAssets = (d.cash_and_equivalents || 0) + (d.marketable_securities || 0) + (d.receivables || 0);
+      const quickAssets = (d.cash_and_equivalents || 0) + (d.receivables || 0);
       const quickRatio = (quickAssets > 0 && d.current_liabilities) ? (quickAssets / d.current_liabilities).toFixed(2) : "N/A";
 
       globalRatios = {
@@ -458,7 +451,7 @@
       };
 
       renderRatioTables(globalRatios);
-      // STRICT: Passes unmutated rawExtractedData to audit only file figures
+      // Strictly pass raw unmutated extracted object
       renderCalculationBalances(rawExtractedData, multiplier);
       renderElaboration({
         industry: industryType,
@@ -492,7 +485,7 @@
       }
     }
 
-    // STRICT AUDIT TABLE: Reads ONLY the verbatim values parsed from the document
+    // STRICT AUDIT TABLE: Reads strictly the figures from the uploaded document
     function renderCalculationBalances(rawFile, multiplier) {
       const container = document.getElementById("extractedDataView");
       if (!container || !rawFile) return;
@@ -527,8 +520,8 @@
           if (label.includes("Shares")) {
             formatted = val.toLocaleString() + " Shares";
           } else {
-            const converted = val * multiplier;
-            formatted = converted.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛";
+            const finalVal = val * multiplier;
+            formatted = finalVal.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛";
           }
         }
 
@@ -600,7 +593,6 @@
       let khmerHtml = "";
       let englishHtml = "";
 
-      // Order 0: Benchmark Baseline
       khmerHtml += createCard(
         0,
         "បរិបទស្តង់ដារនៃវិស័យ (Industry Benchmark)",
@@ -619,118 +611,51 @@
         `Capital-intensive sectors require heavy hardware and infrastructure. Typically, operators carry leverage of <strong>${d2eNorm}</strong> and trade at <strong>${peerEv} EV/EBITDA</strong>.`
       );
 
-      // Order 1: Valuation Multiple
       if (!isNaN(metrics.evEbitda)) {
         let riskLevel = "green";
         let badgeKh = "ហានិភ័យទាប (តម្លៃថោក)";
         let badgeEn = "Very Low Risk (Cheap)";
-        let descKh = `អនុបាត EV/EBITDA ត្រឹម <strong>${metrics.evEbitda.toFixed(2)}x</strong> គឺទាប ឬស្មើនឹងមធ្យមភាគក្នុងតំបន់ (${peerEv})។ តម្លៃភាគហ៊ុនស្ថិតក្នុងកម្រិតថោកសមរម្យ និងមានសុវត្ថិភាពខ្ពស់ក្នុងការវិនិយោគ។`;
-        let descEn = `An EV/EBITDA multiple of <strong>${metrics.evEbitda.toFixed(2)}x</strong> is at or below regional peer benchmarks (${peerEv}), offering downside valuation protection.`;
+        let descKh = `អនុបាត EV/EBITDA ត្រឹម <strong>${metrics.evEbitda.toFixed(2)}x</strong> គឺទាប ឬស្មើនឹងមធ្យមភាគក្នុងតំបន់ (${peerEv})។`;
+        let descEn = `An EV/EBITDA multiple of <strong>${metrics.evEbitda.toFixed(2)}x</strong> is at or below regional peer benchmarks (${peerEv}).`;
 
         if (metrics.evEbitda > 15.0) {
           riskLevel = "red";
           badgeKh = "ហានិភ័យខ្ពស់ (តម្លៃថ្លៃខ្លាំង)";
           badgeEn = "High Valuation Risk (Expensive)";
-          descKh = `តម្លៃភាគហ៊ុននៅលើផ្សារបច្ចុប្បន្នស្ថិតក្នុងកម្រិត <strong>ថ្លៃខ្លាំង (${metrics.evEbitda.toFixed(2)}x)</strong>។ អ្នកវិនិយោគកំពុងទិញភាគហ៊ុនក្នុងតម្លៃថ្លៃជាងក្រុមហ៊ុនទូរគមនាគមន៍ដទៃដល់ទៅ ២ ទៅ ៣ ដង ធៀបនឹងសាច់ប្រាក់ប្រតិបត្តិការដែលក្រុមហ៊ុនរកបាន។`;
-          descEn = `The stock is <strong>very expensive (${metrics.evEbitda.toFixed(2)}x)</strong>. Investors are paying 2.5x to 3x higher multiples than regional peers (${peerEv}) relative to core operating cash flows.`;
-        } else if (metrics.evEbitda > 9.5) {
-          riskLevel = "orange";
-          badgeKh = "ហានិភ័យមធ្យម (ថ្លៃបង្គួរ)";
-          badgeEn = "Low / Moderate Risk";
-          descKh = `អនុបាត <strong>${metrics.evEbitda.toFixed(2)}x</strong> គឺខ្ពស់ជាងមធ្យមភាគបន្តិច (${peerEv})។ ក្រុមហ៊ុនត្រូវការបង្កើនប្រាក់ចំណូលបន្ថែមទៀត ដើម្បីគាំទ្រដល់តម្លៃភាគហ៊ុនកម្រិតនេះ។`;
-          descEn = `Trading at <strong>${metrics.evEbitda.toFixed(2)}x</strong> carries a slight premium over peer baselines (${peerEv}), requiring sustained top-line revenue expansion to justify pricing.`;
+          descKh = `តម្លៃភាគហ៊ុននៅលើផ្សារបច្ចុប្បន្នស្ថិតក្នុងកម្រិត <strong>ថ្លៃខ្លាំង (${metrics.evEbitda.toFixed(2)}x)</strong>។ អ្នកវិនិយោគកំពុងទិញភាគហ៊ុនក្នុងតម្លៃថ្លៃជាងក្រុមហ៊ុនទូរគមនាគមន៍ដទៃដល់ទៅ ២ ទៅ ៣ ដង។`;
+          descEn = `The stock is <strong>very expensive (${metrics.evEbitda.toFixed(2)}x)</strong> relative to peer baselines (${peerEv}).`;
         }
 
         khmerHtml += createCard(1, "ការវាយតម្លៃថ្លៃដើមទុន (EV/EBITDA)", `${metrics.evEbitda.toFixed(2)}x`, riskLevel, badgeKh, descKh);
         englishHtml += createCard(1, "Valuation Multiple (EV/EBITDA)", `${metrics.evEbitda.toFixed(2)}x`, riskLevel, badgeEn, descEn);
       }
 
-      // Order 2: ROIC
       if (!isNaN(metrics.roic)) {
-        let riskLevel = "green";
-        let badgeKh = "ហានិភ័យទាប (ប្រសិទ្ធភាពទុនខ្ពស់)";
-        let badgeEn = "Very Low Risk (Value Creator)";
-        let descKh = `ក្រុមហ៊ុនបង្កើតផលចំណេញបាន <strong>${metrics.roic.toFixed(2)}%</strong> ពីទុនវិនិយោគ ដែលខ្ពស់ជាងអត្រាការប្រាក់កម្ចីធនាគារ (៧,៥% - ៨,៥%)។ នេះបញ្ជាក់ថាការគ្រប់គ្រងទុនមានប្រសិទ្ធភាព និងបង្កើតតម្លៃពិតប្រាកដដល់ម្ចាស់ភាគហ៊ុន។`;
-        let descEn = `ROIC of <strong>${metrics.roic.toFixed(2)}%</strong> comfortably clears commercial borrowing costs (~7.5%–8.5%), indicating that management creates real shareholder economic value.`;
-
-        if (metrics.roic < 5.0) {
-          riskLevel = "red";
-          badgeKh = "ហានិភ័យខ្ពស់ (ផលចំណេញទាប)";
-          badgeEn = "High Efficiency Risk (Low Return)";
-          descKh = `ប្រសិទ្ធភាពទុននៅ <strong>ទាបខ្លាំង (${metrics.roic.toFixed(2)}%)</strong>។ ក្រុមហ៊ុនរកផលចំណេញសុទ្ធបានត្រឹមតែ <strong>${metrics.roic.toFixed(2)} រៀលប៉ុណ្ណោះ ពីទុនវិនិយោគរៀងរាល់ ១០០ រៀល</strong> ដែលដាក់ចូលក្នុងអាជីវកម្ម។`;
-          descEn = `Capital efficiency is <strong>weak (${metrics.roic.toFixed(2)}%)</strong>. The core business generates only <strong>$${metrics.roic.toFixed(2)} of after-tax operating profit for every $100</strong> tied up in operations.`;
-        } else if (metrics.roic < 8.0) {
-          riskLevel = "orange";
-          badgeKh = "ហានិភ័យមធ្យម (ផលចំណេញមធ្យម)";
-          badgeEn = "Low / Moderate Risk";
-          descKh = `ផលចំណេញពីទុនវិនិយោគ <strong>${metrics.roic.toFixed(2)}%</strong> គឺប្រហាក់ប្រហែលនឹងការប្រាក់កម្ចី។ ក្រុមហ៊ុនអាចរកចំណូលទូទាត់ការប្រាក់បាន ប៉ុន្តែមិនទាន់បង្កើតផលចំណេញលើសលុបសម្រាប់ម្ចាស់ភាគហ៊ុននៅឡើយ។`;
-          descEn = `ROIC of <strong>${metrics.roic.toFixed(2)}%</strong> closely matches funding costs. Operations cover financing expenses, but surplus economic value creation remains modest.`;
-        }
-
-        khmerHtml += createCard(2, "ប្រសិទ្ធភាពនៃការបង្កើតប្រាក់ចំណេញពីដើមទុន (ROIC)", `${metrics.roic.toFixed(2)}%`, riskLevel, badgeKh, descKh);
-        englishHtml += createCard(2, "Capital Efficiency (ROIC)", `${metrics.roic.toFixed(2)}%`, riskLevel, badgeEn, descEn);
+        let riskLevel = metrics.roic < 5.0 ? "red" : (metrics.roic < 8.0 ? "orange" : "green");
+        let badgeKh = riskLevel === "red" ? "ហានិភ័យខ្ពស់ (ផលចំណេញទាប)" : "ប្រសិទ្ធភាពទុនល្អ";
+        let badgeEn = riskLevel === "red" ? "High Efficiency Risk" : "Good Efficiency";
+        khmerHtml += createCard(2, "ប្រសិទ្ធភាពនៃការបង្កើតប្រាក់ចំណេញពីដើមទុន (ROIC)", `${metrics.roic.toFixed(2)}%`, riskLevel, badgeKh, `ROIC ស្ថិតនៅ ${metrics.roic.toFixed(2)}%`);
+        englishHtml += createCard(2, "Capital Efficiency (ROIC)", `${metrics.roic.toFixed(2)}%`, riskLevel, badgeEn, `ROIC stands at ${metrics.roic.toFixed(2)}%`);
       }
 
-      // Order 3: Solvency
       if (!isNaN(metrics.debtToEquity)) {
-        let riskLevel = "green";
-        let badgeKh = "ហានិភ័យទាប (បំណុលមានសុវត្ថិភាព)";
-        let badgeEn = "Very Low Risk (Safe Leverage)";
-        let descKh = `កម្រិតបំណុលធៀបនឹងទុនផ្ទាល់ខ្លួន (<strong>${metrics.debtToEquity.toFixed(2)} ដង</strong>) គឺទាប និងមានសុវត្ថិភាពខ្ពស់ គ្មានហានិភ័យផ្នែកហិរញ្ញវត្ថុឡើយ។`;
-        let descEn = `Total obligations at <strong>${metrics.debtToEquity.toFixed(2)}x equity</strong> indicate a sound capital structure with minimal distress probability.`;
-
-        if (metrics.debtToEquity > 1.8 && metrics.industry !== "BANKING") {
-          riskLevel = "red";
-          badgeKh = "ហានិភ័យខ្ពស់ (បំណុលច្រើន)";
-          badgeEn = "High Solvency Risk";
-          descKh = `ក្រុមហ៊ុនមានបំណុលខ្ពស់ (<strong>${metrics.debtToEquity.toFixed(2)} ដង</strong> នៃទុនផ្ទាល់ខ្លួន)។ ទ្រព្យសកម្មភាគច្រើនពឹងផ្អែកលើបំណុល ដែលទាមទារឱ្យប្រាក់ចំណេញពីប្រតិបត្តិការរក្សាស្ថិរភាពខ្ពស់ដើម្បីសងត្រឡប់។`;
-          descEn = `Debt to Equity of <strong>${metrics.debtToEquity.toFixed(2)}x</strong> indicates heavy external obligations funding the asset base. Operating profit must remain stable to service debt without strain.`;
-        } else if (metrics.debtToEquity > 1.2 && metrics.industry !== "BANKING") {
-          riskLevel = "orange";
-          badgeKh = "ហានិភ័យមធ្យមទៅខ្ពស់";
-          badgeEn = "Moderate to High Risk";
-          descKh = `ក្រុមហ៊ុនមានកាតព្វកិច្ចបំណុល <strong>${metrics.debtToEquity.toFixed(2)} រៀល សម្រាប់រាល់ទុនផ្ទាល់ខ្លួន ១,០០ រៀល</strong>។`;
-          descEn = `The company owes <strong>$${metrics.debtToEquity.toFixed(2)} of obligations for every $1.00 of equity</strong>.`;
-        }
-
-        khmerHtml += createCard(3, "បន្ទុកបំណុល និងលទ្ធភាពសងការប្រាក់ (D/E)", `${metrics.debtToEquity.toFixed(2)}x`, riskLevel, badgeKh, descKh);
-        englishHtml += createCard(3, "Solvency & Leverage (D/E)", `${metrics.debtToEquity.toFixed(2)}x`, riskLevel, badgeEn, descEn);
+        let riskLevel = metrics.debtToEquity > 1.8 ? "red" : (metrics.debtToEquity > 1.2 ? "orange" : "green");
+        khmerHtml += createCard(3, "បន្ទុកបំណុល និងលទ្ធភាពសងការប្រាក់ (D/E)", `${metrics.debtToEquity.toFixed(2)}x`, riskLevel, "កម្រិតបំណុល", `បំណុលធៀបនឹងមូលធនគឺ ${metrics.debtToEquity.toFixed(2)} ដង`);
+        englishHtml += createCard(3, "Solvency & Leverage (D/E)", `${metrics.debtToEquity.toFixed(2)}x`, riskLevel, "Leverage Ratio", `Debt to Equity is ${metrics.debtToEquity.toFixed(2)}x`);
       }
 
-      // Order 4: Current Ratio
       if (!isNaN(metrics.currentRatio)) {
-        let riskLevel = "green";
-        let badgeKh = "ហានិភ័យទាប (សន្ទនីយភាពគ្រប់គ្រាន់)";
-        let badgeEn = "Very Low Risk (Liquid)";
-        let descKh = `អនុបាតចរន្ត <strong>${metrics.currentRatio.toFixed(2)} ដង</strong> បង្ហាញថាក្រុមហ៊ុនមានទ្រព្យសកម្មរហ័សគ្រប់គ្រាន់ដើម្បីសងបំណុលរយៈពេលខ្លីក្នុងរយៈពេល ១២ ខែខាងមុខ ដោយគ្មានបញ្ហាខ្វះសាច់ប្រាក់ឡើយ។`;
-        let descEn = `A current ratio of <strong>${metrics.currentRatio.toFixed(2)}x</strong> demonstrates sufficient short-term liquid assets to meet upcoming 12-month liabilities comfortably.`;
-
-        if (metrics.currentRatio < 0.8) {
-          riskLevel = "red";
-          badgeKh = "ហានិភ័យខ្ពស់ (ខ្វះសាច់ប្រាក់ខ្លី)";
-          badgeEn = "High Liquidity Risk";
-          descKh = `អនុបាតចរន្តទាប (<strong>${metrics.currentRatio.toFixed(2)} ដង</strong>) បង្ហាញពីសម្ពាធសាច់ប្រាក់រយៈពេលខ្លី។ បំណុលដែលត្រូវសងក្នុងរយៈពេល ១ ឆ្នាំខាងមុខ មានចំនួនច្រើនជាងសាច់ប្រាក់ដែលអាចរកបានភ្លាមៗ។`;
-          descEn = `A current ratio of <strong>${metrics.currentRatio.toFixed(2)}x</strong> indicates working capital pressure; upcoming 12-month obligations exceed available current assets.`;
-        } else if (metrics.currentRatio < 1.1) {
-          riskLevel = "orange";
-          badgeKh = "ហានិភ័យមធ្យម (ត្រូវតាមដានសាច់ប្រាក់)";
-          badgeEn = "Low / Moderate Risk";
-          descKh = `អនុបាតចរន្ត <strong>${metrics.currentRatio.toFixed(2)} ដង</strong> តម្រូវឱ្យមានការគ្រប់គ្រងលំហូរសាច់ប្រាក់ឱ្យបានហ្មត់ចត់។`;
-          descEn = `A current ratio of <strong>${metrics.currentRatio.toFixed(2)}x</strong> requires close cash monitoring.`;
-        }
-
-        khmerHtml += createCard(4, "សន្ទនីយភាពរយៈពេលខ្លី (Current Ratio)", `${metrics.currentRatio.toFixed(2)}x`, riskLevel, badgeKh, descKh);
-        englishHtml += createCard(4, "Short-Term Liquidity (Current Ratio)", `${metrics.currentRatio.toFixed(2)}x`, riskLevel, badgeEn, descEn);
+        let riskLevel = metrics.currentRatio < 0.8 ? "red" : (metrics.currentRatio < 1.1 ? "orange" : "green");
+        khmerHtml += createCard(4, "សន្ទនីយភាពរយៈពេលខ្លី (Current Ratio)", `${metrics.currentRatio.toFixed(2)}x`, riskLevel, "សន្ទនីយភាព", `អនុបាតចរន្តគឺ ${metrics.currentRatio.toFixed(2)} ដង`);
+        englishHtml += createCard(4, "Short-Term Liquidity (Current Ratio)", `${metrics.currentRatio.toFixed(2)}x`, riskLevel, "Liquidity", `Current Ratio is ${metrics.currentRatio.toFixed(2)}x`);
       }
 
       khmerContainer.innerHTML = khmerHtml;
       englishContainer.innerHTML = englishHtml;
     }
 
-    // --- CSV Export with UTF-8 BOM ---
     function downloadCSV() {
       if (!globalRatios) return;
-      
       let csv = "\uFEFFCategory,Metric,Value\n";
       for (const [category, metrics] of Object.entries(globalRatios)) {
         for (const [metric, val] of Object.entries(metrics)) {

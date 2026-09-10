@@ -42,8 +42,16 @@
         </select>
       </div>
       <div>
-        <label class="block text-xs font-semibold text-gray-700 mb-1">Gemini API Key</label>
-        <input id="apiKey" type="password" placeholder="AIzaSy..." class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500" />
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-xs font-semibold text-gray-700">Gemini API Key</label>
+          <span id="keyStatusBadge" class="text-[10px] text-gray-400 font-medium">Not Saved</span>
+        </div>
+        <div class="flex">
+          <input id="apiKey" type="password" placeholder="AIzaSy..." class="w-full border rounded-l-lg p-2 text-xs focus:ring-2 focus:ring-blue-500" />
+          <button id="saveKeyBtn" onclick="toggleSaveApiKey()" class="bg-gray-100 hover:bg-gray-200 border-t border-b border-r text-gray-700 font-bold px-2 text-[11px] rounded-r-lg transition whitespace-nowrap">
+            Remember
+          </button>
+        </div>
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-700 mb-1">Share Price</label>
@@ -148,6 +156,49 @@
     const USD_TO_KHR = 4000;
     let globalRatios = null;
     let rawExtractedData = null;
+
+    // --- LocalStorage API Key Management ---
+    document.addEventListener("DOMContentLoaded", () => {
+      loadStoredApiKey();
+    });
+
+    function loadStoredApiKey() {
+      const savedKey = localStorage.getItem("gemini_api_key");
+      const keyInput = document.getElementById("apiKey");
+      const keyBadge = document.getElementById("keyStatusBadge");
+      const saveBtn = document.getElementById("saveKeyBtn");
+
+      if (savedKey) {
+        keyInput.value = savedKey;
+        keyBadge.textContent = "Saved";
+        keyBadge.className = "text-[10px] text-emerald-600 font-semibold";
+        saveBtn.textContent = "Clear";
+        saveBtn.className = "bg-rose-50 hover:bg-rose-100 border-t border-b border-r border-rose-200 text-rose-700 font-bold px-2 text-[11px] rounded-r-lg transition whitespace-nowrap";
+      } else {
+        keyBadge.textContent = "Not Saved";
+        keyBadge.className = "text-[10px] text-gray-400 font-medium";
+        saveBtn.textContent = "Remember";
+        saveBtn.className = "bg-gray-100 hover:bg-gray-200 border-t border-b border-r text-gray-700 font-bold px-2 text-[11px] rounded-r-lg transition whitespace-nowrap";
+      }
+    }
+
+    function toggleSaveApiKey() {
+      const savedKey = localStorage.getItem("gemini_api_key");
+      const keyInput = document.getElementById("apiKey");
+
+      if (savedKey) {
+        localStorage.removeItem("gemini_api_key");
+        keyInput.value = "";
+      } else {
+        const val = keyInput.value.trim();
+        if (!val) {
+          alert("Please enter a valid Gemini API key first.");
+          return;
+        }
+        localStorage.setItem("gemini_api_key", val);
+      }
+      loadStoredApiKey();
+    }
 
     const financialSchema = {
       type: "OBJECT",
@@ -255,7 +306,6 @@
       const isUSD = docCurrency.includes("USD") || docCurrency.includes("$");
       const multiplier = isUSD ? USD_TO_KHR : 1.0;
 
-      // Convert pure extracted items to KHR
       const d = {};
       for (const [key, val] of Object.entries(rawExtractedData)) {
         if (typeof val === "number" && !key.includes("shares")) {
@@ -265,28 +315,23 @@
         }
       }
 
-      // Read UI Market Inputs
       const companyType = document.getElementById("companyType").value;
       const industryType = document.getElementById("industryType").value;
       const priceInput = parseFloat(document.getElementById("sharePrice").value);
       const priceCurrency = document.getElementById("priceCurrency").value;
       let priceInKHR = (!isNaN(priceInput) && priceInput > 0) ? (priceCurrency === "USD" ? priceInput * USD_TO_KHR : priceInput) : null;
 
-      // Allow manual override only for market-facing DPS if provided, otherwise strictly use extracted
       const manualDPSInput = parseFloat(document.getElementById("manualDPS").value);
       const dpsCurrency = document.getElementById("dpsCurrency").value;
       if (!isNaN(manualDPSInput) && manualDPSInput >= 0) {
         d.dividend_per_share = (dpsCurrency === "USD") ? manualDPSInput * USD_TO_KHR : manualDPSInput;
       }
 
-      // Strict file-only share count
       const listedShares = d.shares_outstanding || 0;
 
       document.getElementById("detectedCurrencyBadge").textContent = `Report: ${docCurrency} | Converted to KHR (1 USD = 4,000 KHR)`;
 
-      // -------------------------------------------------------------
-      // 1. CSX VALUATION & CAPITALIZATION
-      // -------------------------------------------------------------
+      // 1. Valuation & Cap
       let mktCapVal = null;
       let mktCapDisplay = "N/A";
       if (priceInKHR && listedShares > 0) {
@@ -294,7 +339,6 @@
         mktCapDisplay = mktCapVal.toLocaleString() + " ៛";
       }
 
-      // SOE Equity Adjustments for CSX
       let adjustedEquity = d.total_equity || 0;
       if (companyType === "PWSA") {
         adjustedEquity -= (391100942 * 1000);
@@ -307,7 +351,6 @@
       const bvps = (listedShares > 0 && adjustedEquity > 0) ? (adjustedEquity / listedShares) : null;
       const pbRatio = (priceInKHR && bvps && bvps > 0) ? (priceInKHR / bvps).toFixed(2) : "N/A";
 
-      // EV / EBITDA
       const ebitda = (d.operating_income || 0) + (d.depreciation_amortization || 0);
       let evDisplay = "N/A", evEbitdaDisplay = "N/A";
       if (mktCapVal && ebitda > 0) {
@@ -317,9 +360,7 @@
         evEbitdaDisplay = (ev / ebitda).toFixed(2) + "x";
       }
 
-      // -------------------------------------------------------------
       // 2. ROIC
-      // -------------------------------------------------------------
       const taxBase = (d.operating_income || 0) - (d.interest_expense || 0);
       const effTax = (taxBase > 0 && d.tax_expense) ? Math.min(Math.max(d.tax_expense / taxBase, 0), 0.35) : 0.20;
       const nopat = (d.operating_income || 0) * (1 - effTax);
@@ -327,18 +368,14 @@
       const investedCap = (d.total_equity || 0) + (d.total_liabilities || 0) - (d.cash_and_equivalents || 0);
       const roic = investedCap > 0 ? ((nopat / investedCap) * 100).toFixed(2) + "%" : "N/A";
 
-      // -------------------------------------------------------------
-      // 3. SOLVENCY & LEVERAGE
-      // -------------------------------------------------------------
+      // 3. Solvency & Leverage
       const totalLiab = d.total_liabilities || 0;
       const debtToEquity = (d.total_equity && d.total_equity > 0) ? (totalLiab / d.total_equity).toFixed(2) + "x" : "N/A";
       const debtToAsset = (d.total_assets && d.total_assets > 0) ? ((totalLiab / d.total_assets) * 100).toFixed(2) + "%" : "N/A";
       const intCoverage = (d.interest_expense && d.interest_expense > 0) ? (d.operating_income / d.interest_expense).toFixed(2) + "x" : "N/A";
       const aeRatio = (d.total_assets && d.total_equity && d.total_equity > 0) ? (d.total_assets / d.total_equity).toFixed(2) + "x" : "N/A";
 
-      // -------------------------------------------------------------
-      // 4. PROFITABILITY & MARGINS
-      // -------------------------------------------------------------
+      // 4. Profitability
       const avgEquity = (d.beginning_equity && d.total_equity) ? ((d.beginning_equity + d.total_equity) / 2) : d.total_equity;
       const avgAssets = (d.beginning_assets && d.total_assets) ? ((d.beginning_assets + d.total_assets) / 2) : d.total_assets;
 
@@ -348,9 +385,7 @@
       const opMargin = (d.revenue && d.operating_income) ? ((d.operating_income / d.revenue) * 100).toFixed(2) + "%" : "N/A";
       const netMargin = (d.revenue && d.net_income) ? ((d.net_income / d.revenue) * 100).toFixed(2) + "%" : "N/A";
 
-      // -------------------------------------------------------------
-      // 5. EARNINGS & DIVIDENDS
-      // -------------------------------------------------------------
+      // 5. Per Share & Dividends
       const eps = (listedShares > 0 && d.net_income) ? (d.net_income / listedShares) : null;
       const epsDisplay = eps !== null ? eps.toFixed(2) + " ៛" : "N/A";
       const peRatio = (priceInKHR && eps && eps > 0) ? (priceInKHR / eps).toFixed(2) + "x" : "N/A";
@@ -367,7 +402,6 @@
         divPayoutDisplay = ((d.dividend_per_share / eps) * 100).toFixed(2) + "%";
       }
 
-      // Liquidity
       const currentRatio = (d.current_assets && d.current_liabilities) ? (d.current_assets / d.current_liabilities).toFixed(2) : "N/A";
       const quickAssets = (d.cash_and_equivalents || 0) + (d.marketable_securities || 0) + (d.receivables || 0);
       const quickRatio = (quickAssets > 0 && d.current_liabilities) ? (quickAssets / d.current_liabilities).toFixed(2) : "N/A";
@@ -440,7 +474,6 @@
       }
     }
 
-    // STRICT: Displays ONLY the line items retrieved from the document
     function renderCalculationBalances(d) {
       const container = document.getElementById("extractedDataView");
       if (!container) return;
@@ -541,7 +574,7 @@
       let khmerHtml = "";
       let englishHtml = "";
 
-      // Order 0: Industry Profile Baseline
+      // Order 0: Benchmark Baseline
       khmerHtml += createCard(
         0,
         "បរិបទស្តង់ដារនៃវិស័យ (Industry Benchmark)",
@@ -560,7 +593,7 @@
         `Capital-intensive sectors require heavy hardware and infrastructure. Typically, operators carry leverage of <strong>${d2eNorm}</strong> and trade at <strong>${peerEv} EV/EBITDA</strong>.`
       );
 
-      // Order 1: CSX Capitalization & Valuation (EV/EBITDA)
+      // Order 1: Valuation Multiple
       if (!isNaN(metrics.evEbitda)) {
         let riskLevel = "green";
         let badgeKh = "ហានិភ័យទាប (តម្លៃថោក)";
@@ -586,7 +619,7 @@
         englishHtml += createCard(1, "Valuation Multiple (EV/EBITDA)", `${metrics.evEbitda.toFixed(2)}x`, riskLevel, badgeEn, descEn);
       }
 
-      // Order 2: Capital Efficiency (ROIC)
+      // Order 2: ROIC
       if (!isNaN(metrics.roic)) {
         let riskLevel = "green";
         let badgeKh = "ហានិភ័យទាប (ប្រសិទ្ធភាពទុនខ្ពស់)";
@@ -612,7 +645,7 @@
         englishHtml += createCard(2, "Capital Efficiency (ROIC)", `${metrics.roic.toFixed(2)}%`, riskLevel, badgeEn, descEn);
       }
 
-      // Order 3: Solvency & Leverage (Debt to Equity & Interest Coverage)
+      // Order 3: Solvency
       if (!isNaN(metrics.debtToEquity)) {
         let riskLevel = "green";
         let badgeKh = "ហានិភ័យទាប (បំណុលមានសុវត្ថិភាព)";
@@ -638,7 +671,7 @@
         englishHtml += createCard(3, "Solvency & Leverage (D/E)", `${metrics.debtToEquity.toFixed(2)}x`, riskLevel, badgeEn, descEn);
       }
 
-      // Order 4: Liquidity & Working Capital (Current Ratio)
+      // Order 4: Current Ratio
       if (!isNaN(metrics.currentRatio)) {
         let riskLevel = "green";
         let badgeKh = "ហានិភ័យទាប (សន្ទនីយភាពគ្រប់គ្រាន់)";
@@ -668,9 +701,12 @@
       englishContainer.innerHTML = englishHtml;
     }
 
+    // --- CSV Export with UTF-8 BOM ---
     function downloadCSV() {
       if (!globalRatios) return;
-      let csv = "Category,Metric,Value\n";
+      
+      // \uFEFF signals UTF-8 to Microsoft Excel so '៛' renders correctly
+      let csv = "\uFEFFCategory,Metric,Value\n";
       for (const [category, metrics] of Object.entries(globalRatios)) {
         for (const [metric, val] of Object.entries(metrics)) {
           csv += `"${category}","${metric}","${val}"\n`;

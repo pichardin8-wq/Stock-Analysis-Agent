@@ -10,7 +10,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 p-4 md:p-8">
-  <div class="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow border border-gray-200">
+  <div class="max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow border border-gray-200">
     <header class="mb-6">
       <div class="flex items-center justify-between">
         <div>
@@ -21,15 +21,24 @@
       </div>
     </header>
 
-    <!-- Stock Selection & Market Inputs -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+    <!-- Stock Selection, Industry & Market Inputs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-4">
       <div>
-        <label class="block text-xs font-semibold text-gray-700 mb-1">Company / Template</label>
+        <label class="block text-xs font-semibold text-gray-700 mb-1">Company / SOE Rules</label>
         <select id="companyType" onchange="executeCalculations()" class="w-full border rounded-lg p-2 text-xs bg-white focus:ring-2 focus:ring-blue-500 font-medium">
-          <option value="STANDARD">Standard Company (e.g. ABC, GTI, MJQE)</option>
+          <option value="STANDARD">Standard Company (e.g. CGSM, GTI, MJQE)</option>
           <option value="PWSA">PWSA (Deducts Class A Non-voting)</option>
           <option value="PPAP">PPAP (Deducts Class C Non-voting)</option>
           <option value="PAS">PAS (Deducts Class A Non-voting)</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 mb-1">Industry Nature</label>
+        <select id="industryType" onchange="executeCalculations()" class="w-full border rounded-lg p-2 text-xs bg-white focus:ring-2 focus:ring-blue-500 font-medium">
+          <option value="TELECOM_INFRA">Telecom & Infrastructure (High CapEx)</option>
+          <option value="BANKING">Banking & Financial Services</option>
+          <option value="MANUFACTURING">Industrial & Manufacturing</option>
+          <option value="CONSUMER">Consumer & Services</option>
         </select>
       </div>
       <div>
@@ -39,7 +48,7 @@
       <div>
         <label class="block text-xs font-semibold text-gray-700 mb-1">Share Price</label>
         <div class="flex">
-          <input id="sharePrice" type="number" step="any" placeholder="e.g. 9080" oninput="executeCalculations()" class="w-2/3 border rounded-l-lg p-2 text-xs" />
+          <input id="sharePrice" type="number" step="any" placeholder="e.g. 2450" oninput="executeCalculations()" class="w-2/3 border rounded-l-lg p-2 text-xs" />
           <select id="priceCurrency" onchange="executeCalculations()" class="w-1/3 border-t border-b border-r rounded-r-lg p-1 text-xs bg-gray-50">
             <option value="KHR" selected>KHR</option>
             <option value="USD">USD</option>
@@ -49,7 +58,7 @@
       <div>
         <label class="block text-xs font-semibold text-gray-700 mb-1">Dividend Per Share (DPS)</label>
         <div class="flex">
-          <input id="manualDPS" type="number" step="any" placeholder="e.g. 350" oninput="executeCalculations()" class="w-2/3 border rounded-l-lg p-2 text-xs" />
+          <input id="manualDPS" type="number" step="any" placeholder="e.g. 158.9" oninput="executeCalculations()" class="w-2/3 border rounded-l-lg p-2 text-xs" />
           <select id="dpsCurrency" onchange="executeCalculations()" class="w-1/3 border-t border-b border-r rounded-r-lg p-1 text-xs bg-gray-50">
             <option value="KHR" selected>KHR</option>
             <option value="USD">USD</option>
@@ -61,7 +70,7 @@
     <!-- CSX Specific Inputs Accordion -->
     <details class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
       <summary class="text-xs font-bold text-blue-900 cursor-pointer select-none">
-        CSX Custom Parameters (Share Counts & Prior Year Balances in KHR)
+        CSX Custom Parameters (Share Counts, Overrides & Prior Year Balances in KHR)
       </summary>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mt-3">
         <div>
@@ -93,8 +102,8 @@
           <input id="manualCL" type="number" step="any" placeholder="For banks / missing" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
         </div>
         <div>
-          <label class="block text-xs text-gray-600 mb-1">Invested Capital (KHR)</label>
-          <input id="manualIC" type="number" step="any" placeholder="For ROIC" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
+          <label class="block text-xs text-gray-600 mb-1">Invested Capital (KHR Override)</label>
+          <input id="manualIC" type="number" step="any" placeholder="Defaults to Eq + Liab - Cash" oninput="executeCalculations()" class="w-full border rounded p-1.5 text-xs" />
         </div>
       </div>
     </details>
@@ -124,9 +133,15 @@
 
       <div id="tablesContainer" class="space-y-5 mb-8"></div>
 
-      <details class="bg-gray-50 border rounded-lg p-3 text-xs">
+      <!-- Financial Health & Industry Context Elaboration -->
+      <div id="elaborationContainer" class="border border-blue-200 bg-blue-50/60 rounded-xl p-5 mb-8">
+        <h3 class="text-sm font-bold text-blue-950 uppercase tracking-wider mb-2">Automated Financial Diagnostics & Industry Context</h3>
+        <div id="elaborationText" class="text-xs text-gray-800 leading-relaxed space-y-2"></div>
+      </div>
+
+      <details class="bg-gray-50 border rounded-lg p-3 text-xs" open>
         <summary class="font-semibold text-gray-700 cursor-pointer select-none">
-          View Extracted Line Items (Normalized in KHR Riel)
+          Active Calculation Balances (Actual Values Used in Formulas in KHR ៛)
         </summary>
         <div id="extractedDataView" class="mt-2 overflow-x-auto"></div>
       </details>
@@ -155,7 +170,8 @@
         inventory: { type: "NUMBER" },
         current_assets: { type: "NUMBER" },
         current_liabilities: { type: "NUMBER" },
-        total_debt: { type: "NUMBER" },
+        interest_bearing_debt: { type: "NUMBER", description: "Bonds, bank borrowings, loans, lease liabilities" },
+        total_liabilities: { type: "NUMBER", description: "Total liabilities on the balance sheet" },
         total_assets: { type: "NUMBER" },
         beginning_assets: { type: "NUMBER" },
         total_equity: { type: "NUMBER" },
@@ -164,7 +180,7 @@
         total_dividend: { type: "NUMBER" },
         dividend_per_share: { type: "NUMBER" }
       },
-      required: ["revenue", "operating_income", "net_income", "total_assets", "total_equity", "shares_outstanding"]
+      required: ["revenue", "operating_income", "net_income", "total_assets", "total_liabilities", "total_equity", "shares_outstanding"]
     };
 
     function fileToBase64(file) {
@@ -187,12 +203,12 @@
 
       const file = fileInput.files[0];
       statusDiv.className = "mt-4 text-sm font-medium text-blue-600 block";
-      statusDiv.textContent = "Processing financial report...";
+      statusDiv.textContent = "Reading and uploading document...";
       resultsDiv.classList.add("hidden");
 
       try {
         let requestContents = [];
-        const promptInstruction = "Extract financial line items for the latest reporting year. If previous year assets and equity are listed in the statements, extract them as beginning_assets and beginning_equity. Normalize units to single full numbers (multiply thousands by 1,000, millions by 1,000,000). State if figures are in USD or KHR.";
+        const promptInstruction = "Extract the financial statement line items for the latest fiscal year. If prior year assets and equity are reported, extract them as beginning_assets and beginning_equity. Differentiate interest_bearing_debt (bonds/loans) from total_liabilities. Normalize all numbers to full units (e.g., multiply millions by 1,000,000). State if figures are reported in USD or KHR.";
 
         if (file.name.endsWith(".docx")) {
           statusDiv.textContent = "Extracting Word text...";
@@ -200,12 +216,12 @@
           const parsed = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
           requestContents = [{ parts: [{ text: promptInstruction }, { text: parsed.value }] }];
         } else {
-          statusDiv.textContent = "Uploading PDF binary...";
+          statusDiv.textContent = "Encoding PDF binary...";
           const base64Data = await fileToBase64(file);
           requestContents = [{ parts: [{ inline_data: { mime_type: "application/pdf", data: base64Data } }, { text: promptInstruction }] }];
         }
 
-        statusDiv.textContent = "Extracting data with Gemini 3.6 Flash...";
+        statusDiv.textContent = "Processing line items with Gemini 3.6 Flash...";
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -243,7 +259,7 @@
       const isUSD = docCurrency.includes("USD") || docCurrency.includes("$");
       const multiplier = isUSD ? USD_TO_KHR : 1.0;
 
-      // Base line items normalized to KHR
+      // Actual numbers used in calculation (all normalized to KHR)
       const d = {};
       for (const [key, val] of Object.entries(rawExtractedData)) {
         if (typeof val === "number" && !key.includes("shares")) {
@@ -253,8 +269,9 @@
         }
       }
 
-      // Read manual and CSX inputs
+      // Read UI Overrides & Selections
       const companyType = document.getElementById("companyType").value;
+      const industryType = document.getElementById("industryType").value;
       const priceInput = parseFloat(document.getElementById("sharePrice").value);
       const priceCurrency = document.getElementById("priceCurrency").value;
       let priceInKHR = (!isNaN(priceInput) && priceInput > 0) ? (priceCurrency === "USD" ? priceInput * USD_TO_KHR : priceInput) : null;
@@ -283,64 +300,87 @@
       const inputListed = parseFloat(document.getElementById("listedShares").value);
       const listedShares = (!isNaN(inputListed) && inputListed > 0) ? inputListed : (d.shares_outstanding || 0);
       const inputNonListed = parseFloat(document.getElementById("nonListedShares").value) || 0;
+      const totalShares = listedShares + inputNonListed;
 
-      document.getElementById("detectedCurrencyBadge").textContent = `Report: ${docCurrency} | Converted at 1 USD = 4,000 KHR`;
+      document.getElementById("detectedCurrencyBadge").textContent = `Report: ${docCurrency} | Calculated in KHR (1 USD = 4,000 KHR)`;
 
       // -------------------------------------------------------------
-      // CSX FORMULA CALCULATIONS
+      // 1. CSX VALUATION & CAPITALIZATION (Item 1 Adjusted)
       // -------------------------------------------------------------
-
-      // 1 & 2: Market Capitalizations
-      let mktCap = "N/A", fullMktCap = "N/A";
+      let mktCapVal = null, fullMktCapVal = null;
+      let mktCapDisplay = "N/A", fullMktCapDisplay = "N/A";
       if (priceInKHR && listedShares > 0) {
-        mktCap = (listedShares * priceInKHR).toLocaleString() + " ៛";
-        fullMktCap = ((listedShares + inputNonListed) * priceInKHR).toLocaleString() + " ៛";
+        mktCapVal = listedShares * priceInKHR;
+        fullMktCapVal = totalShares * priceInKHR;
+        mktCapDisplay = mktCapVal.toLocaleString() + " ៛";
+        fullMktCapDisplay = fullMktCapVal.toLocaleString() + " ៛";
       }
 
-      // 5: Book Value per share adjustments (CSX SOE Rules)
+      // SOE Equity Adjustments for CSX
       let adjustedEquity = d.total_equity || 0;
       if (companyType === "PWSA") {
-        adjustedEquity -= (391100942 * 1000); // Exclude Class A par KHR 1,000
+        adjustedEquity -= (391100942 * 1000);
       } else if (companyType === "PPAP") {
-        adjustedEquity -= (93769120 * 4000);  // Exclude Class C par KHR 4,000
+        adjustedEquity -= (93769120 * 4000);
       } else if (companyType === "PAS") {
-        adjustedEquity -= (364530861 * 1000); // Exclude Class A par KHR 1,000
+        adjustedEquity -= (364530861 * 1000);
       }
 
       const bvps = (listedShares > 0 && adjustedEquity > 0) ? (adjustedEquity / listedShares) : null;
-      let pbRatio = (priceInKHR && bvps && bvps > 0) ? (priceInKHR / bvps).toFixed(2) : "N/A";
+      const pbRatio = (priceInKHR && bvps && bvps > 0) ? (priceInKHR / bvps).toFixed(2) : "N/A";
 
-      // 9 & 10: ROE and ROA with Beginning & Ending Averages
+      // Item 1: Correct EV / EBITDA
+      // EV = Total Market Cap + Total Liabilities (or Debt) - Cash
+      // DENOMINATOR = Operating Income + Depreciation & Amortization
+      const ebitda = (d.operating_income || 0) + (d.depreciation_amortization || 0);
+      let evDisplay = "N/A", evEbitdaDisplay = "N/A";
+      if (fullMktCapVal && ebitda > 0) {
+        const debtForEV = (d.interest_bearing_debt > 0) ? d.interest_bearing_debt : (d.total_liabilities || 0);
+        const ev = fullMktCapVal + debtForEV - (d.cash_and_equivalents || 0);
+        evDisplay = ev.toLocaleString() + " ៛";
+        evEbitdaDisplay = (ev / ebitda).toFixed(2) + "x";
+      }
+
+      // -------------------------------------------------------------
+      // 2. ROIC (Item 2 Adjusted: Equity + Liabilities - Cash)
+      // -------------------------------------------------------------
+      const taxBase = (d.operating_income || 0) - (d.interest_expense || 0);
+      const effTax = (taxBase > 0 && d.tax_expense) ? Math.min(Math.max(d.tax_expense / taxBase, 0), 0.35) : 0.20;
+      const nopat = (d.operating_income || 0) * (1 - effTax);
+      
+      const defaultInvestedCap = (d.total_equity || 0) + (d.total_liabilities || 0) - (d.cash_and_equivalents || 0);
+      const investedCap = !isNaN(manualIC) && manualIC > 0 ? manualIC : defaultInvestedCap;
+      const roic = investedCap > 0 ? ((nopat / investedCap) * 100).toFixed(2) + "%" : "N/A";
+
+      // -------------------------------------------------------------
+      // 3. SOLVENCY & LEVERAGE (Item 3 Adjusted)
+      // Standard CSX Rule: Total Liabilities / Total Equity & Total Liabilities / Total Assets
+      // -------------------------------------------------------------
+      const totalLiab = d.total_liabilities || 0;
+      const debtToEquity = (d.total_equity && d.total_equity > 0) ? (totalLiab / d.total_equity).toFixed(2) + "x" : "N/A";
+      const debtToAsset = (d.total_assets && d.total_assets > 0) ? ((totalLiab / d.total_assets) * 100).toFixed(2) + "%" : "N/A";
+      const intCoverage = (d.interest_expense && d.interest_expense > 0) ? (d.operating_income / d.interest_expense).toFixed(2) + "x" : "N/A";
+      const aeRatio = (d.total_assets && d.total_equity && d.total_equity > 0) ? (d.total_assets / d.total_equity).toFixed(2) + "x" : "N/A";
+
+      // -------------------------------------------------------------
+      // 4. PROFITABILITY & MARGINS
+      // -------------------------------------------------------------
       const avgEquity = (d.beginning_equity && d.total_equity) ? ((d.beginning_equity + d.total_equity) / 2) : d.total_equity;
       const avgAssets = (d.beginning_assets && d.total_assets) ? ((d.beginning_assets + d.total_assets) / 2) : d.total_assets;
 
       const roe = (avgEquity && d.net_income) ? ((d.net_income / avgEquity) * 100).toFixed(2) + "%" : "N/A";
       const roa = (avgAssets && d.net_income) ? ((d.net_income / avgAssets) * 100).toFixed(2) + "%" : "N/A";
-
-      // 11: A/E (Assets / Equities)
-      const aeRatio = (d.total_assets && d.total_equity) ? (d.total_assets / d.total_equity).toFixed(2) : "N/A";
-
-      // Profitability & Margins
       const grossMargin = (d.revenue && d.gross_profit) ? ((d.gross_profit / d.revenue) * 100).toFixed(2) + "%" : "N/A";
       const opMargin = (d.revenue && d.operating_income) ? ((d.operating_income / d.revenue) * 100).toFixed(2) + "%" : "N/A";
       const netMargin = (d.revenue && d.net_income) ? ((d.net_income / d.revenue) * 100).toFixed(2) + "%" : "N/A";
 
-      // ROIC
-      const ebitda = (d.operating_income || 0) + (d.depreciation_amortization || 0);
-      const taxBase = (d.operating_income || 0) - (d.interest_expense || 0);
-      const effTax = taxBase > 0 ? ((d.tax_expense || 0) / taxBase) : 0.20;
-      const nopat = (d.operating_income || 0) * (1 - effTax);
-      const investedCap = !isNaN(manualIC) ? manualIC : ((d.total_debt || 0) + (d.total_equity || 0) - (d.cash_and_equivalents || 0));
-      const roic = investedCap > 0 ? ((nopat / investedCap) * 100).toFixed(2) + "%" : "N/A";
-
-      // 13: EPS
+      // -------------------------------------------------------------
+      // 5. EARNINGS & DIVIDENDS
+      // -------------------------------------------------------------
       const eps = (listedShares > 0 && d.net_income) ? (d.net_income / listedShares) : null;
       const epsDisplay = eps !== null ? eps.toFixed(2) + " ៛" : "N/A";
+      const peRatio = (priceInKHR && eps && eps > 0) ? (priceInKHR / eps).toFixed(2) + "x" : "N/A";
 
-      // 4: P/E
-      const peRatio = (priceInKHR && eps && eps > 0) ? (priceInKHR / eps).toFixed(2) : "N/A";
-
-      // 6, 7 & 8: Dividends
       let divYieldDisplay = "N/A";
       if (priceInKHR && d.dividend_per_share) {
         divYieldDisplay = ((d.dividend_per_share / priceInKHR) * 100).toFixed(2) + "%";
@@ -353,58 +393,59 @@
         divPayoutDisplay = ((d.dividend_per_share / eps) * 100).toFixed(2) + "%";
       }
 
-      // Solvency & Liquidity
-      const debtToEquity = (d.total_equity && d.total_equity > 0) ? ((d.total_debt || 0) / d.total_equity).toFixed(2) : "N/A";
-      const debtToAsset = (d.total_assets && d.total_assets > 0) ? ((d.total_debt || 0) / d.total_assets).toFixed(2) : "N/A";
-      const intCoverage = (d.interest_expense && d.interest_expense > 0) ? (d.operating_income / d.interest_expense).toFixed(2) : "N/A";
+      // Liquidity
       const currentRatio = (d.current_assets && d.current_liabilities) ? (d.current_assets / d.current_liabilities).toFixed(2) : "N/A";
       const quickAssets = (d.cash_and_equivalents || 0) + (d.marketable_securities || 0) + (d.receivables || 0);
       const quickRatio = (quickAssets > 0 && d.current_liabilities) ? (quickAssets / d.current_liabilities).toFixed(2) : "N/A";
 
-      // EV / EBITDA
-      let evEbitda = "N/A";
-      if (priceInKHR && listedShares > 0) {
-        const ev = (priceInKHR * listedShares) + (d.total_debt || 0) - (d.cash_and_equivalents || 0);
-        if (ebitda > 0) evEbitda = (ev / ebitda).toFixed(2);
-      }
-
       globalRatios = {
         "A. CSX Capitalization & Valuation": {
-          "Market Capitalization": mktCap,
-          "Full Market Capitalization": fullMktCap,
-          "P/E Ratio (Note 4)": peRatio,
-          "P/BV Ratio (Note 5)": pbRatio,
-          "BVPS (Adjusted for SOE rules)": bvps ? bvps.toFixed(2) + " ៛" : "N/A",
-          "EV/EBITDA": evEbitda
+          "Free-Float Market Capitalization": mktCapDisplay,
+          "Full Enterprise Market Cap": fullMktCapDisplay,
+          "Enterprise Value (EV)": evDisplay,
+          "EBITDA (Operating Inc + D&A)": ebitda > 0 ? ebitda.toLocaleString() + " ៛" : "N/A",
+          "EV/EBITDA Multiple": evEbitdaDisplay,
+          "P/E Ratio": peRatio,
+          "P/BV Ratio": pbRatio,
+          "Book Value Per Share (BVPS)": bvps ? bvps.toFixed(2) + " ៛" : "N/A"
         },
-        "B. Profitability Ratios (CSX Standard)": {
-          "Net Profit Margin (Note 15)": netMargin,
+        "B. Capital Efficiency & Profitability": {
+          "ROIC (NOPAT / Invested Capital)": roic,
+          "Invested Capital Used (Eq + Liab - Cash)": investedCap > 0 ? investedCap.toLocaleString() + " ៛" : "N/A",
+          "NOPAT (EBIT * [1 - Tax])": nopat > 0 ? nopat.toLocaleString() + " ៛" : "N/A",
+          "Return on Equity (ROE)": roe,
+          "Return on Assets (ROA)": roa,
           "Gross Margin": grossMargin,
           "Operating Profit Margin": opMargin,
-          "ROE (Avg Equity - Note 9)": roe,
-          "ROA (Avg Assets - Note 10)": roa,
-          "ROIC": roic
+          "Net Profit Margin": netMargin
         },
-        "C. CSX Earnings & Dividend Metrics": {
-          "EPS (Note 13)": epsDisplay,
-          "Dividend Yield (Note 6)": divYieldDisplay,
-          "Dividend Payout Ratio (Note 7)": divPayoutDisplay,
-          "Cash Dividend per Share": d.dividend_per_share ? d.dividend_per_share.toLocaleString() + " ៛" : "N/A"
-        },
-        "D. Solvency & Leverage Ratios": {
-          "A/E (Assets/Equities - Note 11)": aeRatio,
-          "Debt to Equity": debtToEquity,
-          "Debt to Asset": debtToAsset,
+        "C. CSX Solvency & Leverage Standards": {
+          "Debt to Equity (Total Liab / Equity)": debtToEquity,
+          "Debt to Asset (Total Liab / Assets)": debtToAsset,
+          "Assets to Equities (A/E Multiplier)": aeRatio,
           "Interest Coverage Ratio": intCoverage
         },
-        "E. Liquidity Ratios (Note 12)": {
+        "D. Liquidity & Dividends": {
           "Current Ratio": currentRatio,
-          "Quick Ratio": quickRatio
+          "Quick Ratio": quickRatio,
+          "Earnings Per Share (EPS)": epsDisplay,
+          "Dividend Yield": divYieldDisplay,
+          "Dividend Payout Ratio": divPayoutDisplay,
+          "Dividend Per Share": d.dividend_per_share ? d.dividend_per_share.toLocaleString() + " ៛" : "N/A"
         }
       };
 
       renderRatioTables(globalRatios);
-      renderAuditView(d);
+      renderCalculationBalances(d, investedCap, ebitda, nopat);
+      renderElaboration({
+        industry: industryType,
+        evEbitda: parseFloat(evEbitdaDisplay),
+        roic: parseFloat(roic),
+        debtToEquity: parseFloat(debtToEquity),
+        intCoverage: parseFloat(intCoverage),
+        currentRatio: parseFloat(currentRatio),
+        divYield: parseFloat(divYieldDisplay)
+      });
     }
 
     function renderRatioTables(ratios) {
@@ -427,18 +468,87 @@
       }
     }
 
-    function renderAuditView(extracted) {
+    // Item 4: Displays the exact normalized numbers used inside the mathematical formulas
+    function renderCalculationBalances(d, investedCap, ebitda, nopat) {
       const container = document.getElementById("extractedDataView");
+      const calculationItems = {
+        "Revenue (ផលរបរ)": d.revenue,
+        "Gross Profit (ចំណេញដុល)": d.gross_profit,
+        "Operating Income / EBIT (ចំណេញប្រតិបត្តិការ)": d.operating_income,
+        "Depreciation & Amortization (ចំណាយរំលស់)": d.depreciation_amortization,
+        "Calculated EBITDA": ebitda,
+        "Calculated NOPAT": nopat,
+        "Tax Expense (ចំណាយពន្ធ)": d.tax_expense,
+        "Interest Expense (ចំណាយហិរញ្ញវត្ថុ/ការប្រាក់)": d.interest_expense,
+        "Net Income (ចំណេញសុទ្ធ)": d.net_income,
+        "Cash & Cash Equivalents (សាច់ប្រាក់សមមូល)": d.cash_and_equivalents,
+        "Total Assets (ទ្រព្យសកម្មសរុប)": d.total_assets,
+        "Total Liabilities (បំណុលសរុប)": d.total_liabilities,
+        "Total Equity (មូលធនសរុប)": d.total_equity,
+        "Calculated Invested Capital (Eq + Liab - Cash)": investedCap,
+        "CSX Listed Shares Count": d.shares_outstanding
+      };
+
       let rows = "";
-      for (const [key, value] of Object.entries(extracted)) {
-        const displayVal = (typeof value === "number") ? value.toLocaleString() + " ៛" : (value || "—");
+      for (const [label, val] of Object.entries(calculationItems)) {
+        const formatted = typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛" : (val || "—");
         rows += `
           <tr class="border-b">
-            <td class="py-1 px-3 font-mono text-xs text-gray-600">${key}</td>
-            <td class="py-1 px-3 font-semibold text-right text-gray-800">${displayVal}</td>
+            <td class="py-1 px-3 font-medium text-xs text-gray-700">${label}</td>
+            <td class="py-1 px-3 font-mono font-semibold text-right text-gray-900">${formatted}</td>
           </tr>`;
       }
       container.innerHTML = `<table class="w-full text-xs"><tbody>${rows}</tbody></table>`;
+    }
+
+    // Item 5 & 6: Detailed diagnostic interpretation by sector
+    function renderElaboration(metrics) {
+      const el = document.getElementById("elaborationText");
+      let text = "";
+
+      // Industry Benchmarks Definition
+      let peerEv = "6.0x – 9.0x";
+      let d2eNorm = "Under 1.0x";
+      if (metrics.industry === "TELECOM_INFRA") {
+        peerEv = "5.5x – 9.0x";
+        d2eNorm = "0.8x – 1.8x (Due to heavy network rollout and towers)";
+      } else if (metrics.industry === "BANKING") {
+        peerEv = "N/A (P/B and ROE prioritized)";
+        d2eNorm = "5.0x – 8.0x (Customer deposits classified as liabilities)";
+      }
+
+      text += `<p><strong>1. Industry Profile Context (${document.getElementById("industryType").selectedOptions[0].text}):</strong> In this industry, typical leverage ratios run at <em>${d2eNorm}</em>, and healthy EV/EBITDA multiples average <em>${peerEv}</em>.</p>`;
+
+      // Valuation Diagnostic
+      if (!isNaN(metrics.evEbitda)) {
+        if (metrics.evEbitda > 15) {
+          text += `<p><strong>2. Valuation Verdict (Expensive Multiples):</strong> The current EV/EBITDA of <strong>${metrics.evEbitda.toFixed(2)}x</strong> indicates the company is priced at a substantial premium relative to its operating cash flow. Investors are paying a premium driven by dividend floors or low trading floats rather than baseline cash earnings.</p>`;
+        } else if (metrics.evEbitda < 8) {
+          text += `<p><strong>2. Valuation Verdict (Favorable Multiples):</strong> An EV/EBITDA of <strong>${metrics.evEbitda.toFixed(2)}x</strong> indicates an attractive takeover multiple, suggesting the company generates strong operating cash relative to its total capitalization.</p>`;
+        } else {
+          text += `<p><strong>2. Valuation Verdict (Fair Value):</strong> EV/EBITDA of <strong>${metrics.evEbitda.toFixed(2)}x</strong> sits comfortably in line with regional peer medians.</p>`;
+        }
+      }
+
+      // ROIC Diagnostic
+      if (!isNaN(metrics.roic)) {
+        if (metrics.roic < 6.0) {
+          text += `<p><strong>3. Capital Efficiency (ROIC of ${metrics.roic.toFixed(2)}%):</strong> Operating profit generated per dollar of invested capital is lower than the typical CSX commercial borrowing cost (7.5% - 8.5%). Capital expenditures (towers, fiber, or factories) have not yet fully scaled into operational profits.</p>`;
+        } else {
+          text += `<p><strong>3. Capital Efficiency (ROIC of ${metrics.roic.toFixed(2)}%):</strong> The business produces solid economic profit above its funding cost, demonstrating effective management capital allocation.</p>`;
+        }
+      }
+
+      // Solvency Diagnostic
+      if (!isNaN(metrics.debtToEquity)) {
+        if (metrics.debtToEquity > 1.5 && metrics.industry !== "BANKING") {
+          text += `<p><strong>4. Leverage Alert:</strong> Debt to Equity sits at <strong>${metrics.debtToEquity.toFixed(2)}x</strong>. Over half of the asset base is funded via obligations. Ensure Interest Coverage (currently <strong>${metrics.intCoverage ? metrics.intCoverage.toFixed(2) + 'x' : 'N/A'}</strong>) stays comfortably above 2.5x to absorb rate increases.</p>`;
+        } else {
+          text += `<p><strong>4. Solvency Health:</strong> Debt to Equity of <strong>${metrics.debtToEquity.toFixed(2)}x</strong> indicates a stable balance sheet with conservative leverage.</p>`;
+        }
+      }
+
+      el.innerHTML = text;
     }
 
     function downloadCSV() {

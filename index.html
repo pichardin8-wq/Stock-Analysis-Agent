@@ -430,6 +430,8 @@
         },
         "B. Capital Efficiency & Profitability": {
           "ROIC (Method B: NOPAT / [Eq + Liab - Cash])": roic,
+          "Invested Capital Used (Method B)": investedCap > 0 ? investedCap.toLocaleString() + " ៛" : "N/A",
+          "NOPAT (EBIT * [1 - Tax])": nopat > 0 ? nopat.toLocaleString() + " ៛" : "N/A",
           "Return on Equity (ROE)": roe,
           "Return on Assets (ROA)": roa,
           "Gross Margin": grossMargin,
@@ -453,7 +455,6 @@
       };
 
       renderRatioTables(globalRatios);
-      // Strictly pass raw unmutated extracted object
       renderCalculationBalances(rawExtractedData, multiplier);
       renderElaboration({
         industry: industryType,

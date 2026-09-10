@@ -210,25 +210,25 @@
       type: "OBJECT",
       properties: {
         currency: { type: "STRING", description: "Return KHR if tables are in Riel or Million Riel (លានរៀល), or USD if in US Dollars." },
-        revenue: { type: "NUMBER", description: "Exact Total Revenue in full KHR units (e.g. 701,051 Million Riel = 701051000000)" },
+        revenue: { type: "NUMBER", description: "Exact Total Revenue in full KHR units" },
         gross_profit: { type: "NUMBER", description: "Exact Gross Profit in full KHR units" },
-        operating_income: { type: "NUMBER", description: "Operating Income / EBIT in full KHR units (e.g. 139,506 Million Riel = 139506000000)" },
+        operating_income: { type: "NUMBER", description: "Operating Income / EBIT in full KHR units" },
         depreciation_amortization: { type: "NUMBER", description: "Depreciation & Amortization in full KHR units" },
-        interest_expense: { type: "NUMBER", description: "Finance costs / Interest expense in full KHR units (e.g. 119,607 Million Riel = 119607000000)" },
-        tax_expense: { type: "NUMBER", description: "Income tax expense in full KHR units (e.g. 5,202 Million Riel = 5202000000)" },
-        net_income: { type: "NUMBER", description: "Net Profit for the year in full KHR units (e.g. 15,431 Million Riel = 15431000000)" },
+        interest_expense: { type: "NUMBER", description: "Finance costs / Interest expense in full KHR units" },
+        tax_expense: { type: "NUMBER", description: "Income tax expense in full KHR units" },
+        net_income: { type: "NUMBER", description: "Net Profit for the year in full KHR units" },
         cash_and_equivalents: { type: "NUMBER", description: "Cash & cash equivalents in full KHR units" },
         current_assets: { type: "NUMBER", description: "Current Assets in full KHR units" },
         current_liabilities: { type: "NUMBER", description: "Current Liabilities in full KHR units" },
         interest_bearing_debt: { type: "NUMBER", description: "Bonds, loans, borrowings in full KHR units" },
-        total_liabilities: { type: "NUMBER", description: "Total Liabilities in full KHR units (e.g. 1,918,928 Million Riel = 1918928000000)" },
-        total_assets: { type: "NUMBER", description: "Total Assets in full KHR units (e.g. 3,128,675 Million Riel = 3128675000000)" },
-        beginning_assets: { type: "NUMBER", description: "Prior Year Total Assets in full KHR units (e.g. 2,654,962 Million Riel = 2654962000000)" },
-        total_equity: { type: "NUMBER", description: "Total Equity in full KHR units (e.g. 1,209,747 Million Riel = 1209747000000)" },
-        beginning_equity: { type: "NUMBER", description: "Prior Year Total Equity in full KHR units (e.g. 1,197,881 Million Riel = 1197881000000)" },
-        shares_outstanding: { type: "NUMBER", description: "Total shares outstanding in full units (e.g. 1,959,271,206)" },
+        total_liabilities: { type: "NUMBER", description: "Total Liabilities in full KHR units" },
+        total_assets: { type: "NUMBER", description: "Total Assets in full KHR units" },
+        beginning_assets: { type: "NUMBER", description: "Prior Year Total Assets in full KHR units" },
+        total_equity: { type: "NUMBER", description: "Total Equity in full KHR units" },
+        beginning_equity: { type: "NUMBER", description: "Prior Year Total Equity in full KHR units" },
+        shares_outstanding: { type: "NUMBER", description: "Total shares outstanding in full units" },
         total_dividend: { type: "NUMBER", description: "Total dividend paid / declared in full KHR units" },
-        dividend_per_share: { type: "NUMBER", description: "Dividend per share in full KHR units (e.g. 39.73 or 158.90)" }
+        dividend_per_share: { type: "NUMBER", description: "Dividend per share in full KHR units" }
       },
       required: ["currency", "revenue", "operating_income", "net_income", "total_assets", "total_liabilities", "total_equity", "shares_outstanding"]
     };
@@ -260,11 +260,10 @@
         let requestContents = [];
         const promptInstruction = 
           "CRITICAL ACCURACY INSTRUCTION:\n" +
-          "Extract the EXACT audited financial figures disclosed in the attached document for the latest fiscal year (2025).\n" +
+          "Extract the EXACT audited financial figures disclosed in the attached document for the latest fiscal year.\n" +
           "Check the Audited Financial Highlights (ព័ត៌មានហិរញ្ញវត្ថុសង្ខេប) and Audited Financial Statements.\n" +
           "Notice the reporting currency: If numbers are reported in 'Million Riel (លានរៀល)', MULTIPLY by 1,000,000 to convert to full KHR units. Set currency to 'KHR'.\n" +
-          "Example: Revenue of 701,051 Million Riel must be extracted as 701051000000. Total Assets 3,128,675 Million Riel = 3128675000000.\n" +
-          "Do NOT guess or estimate numbers. If an item is not found, return null.";
+          "Do NOT guess or estimate numbers. If an item is not found or not stated verbatim, return null.";
 
         if (file.name.endsWith(".docx")) {
           statusDiv.textContent = "Extracting Word text...";
@@ -312,7 +311,6 @@
       if (!rawExtractedData) return;
 
       const docCurrency = (rawExtractedData.currency || "KHR").toUpperCase();
-      // If report is already extracted in KHR, multiplier is 1.0; only multiply by 4,000 if raw numbers are in USD
       const isPureUSD = docCurrency.includes("USD") || docCurrency.includes("$");
       const multiplier = isPureUSD ? USD_TO_KHR : 1.0;
 
@@ -371,10 +369,14 @@
         evEbitdaDisplay = (ev / ebitda).toFixed(2) + "x";
       }
 
-      // 2. ROIC
+      // -------------------------------------------------------------
+      // 2. ROIC (METHOD B: Invested Capital = Equity + Liabilities - Cash)
+      // -------------------------------------------------------------
       const taxBase = (d.operating_income || 0) - (d.interest_expense || 0);
       const effTax = (taxBase > 0 && d.tax_expense) ? Math.min(Math.max(d.tax_expense / taxBase, 0), 0.35) : 0.20;
       const nopat = (d.operating_income || 0) * (1 - effTax);
+      
+      // Method B: Invested Capital = Total Equity + Total Liabilities - Cash & Cash Equivalents
       const investedCap = (d.total_equity || 0) + (d.total_liabilities || 0) - (d.cash_and_equivalents || 0);
       const roic = investedCap > 0 ? ((nopat / investedCap) * 100).toFixed(2) + "%" : "N/A";
 
@@ -427,7 +429,7 @@
           "Book Value Per Share (BVPS)": bvps ? bvps.toFixed(2) + " ៛" : "N/A"
         },
         "B. Capital Efficiency & Profitability": {
-          "ROIC (NOPAT / Invested Capital)": roic,
+          "ROIC (Method B: NOPAT / [Eq + Liab - Cash])": roic,
           "Return on Equity (ROE)": roe,
           "Return on Assets (ROA)": roa,
           "Gross Margin": grossMargin,
@@ -485,7 +487,7 @@
       }
     }
 
-    // STRICT AUDIT TABLE: Reads strictly the figures from the uploaded document
+    // STRICT AUDIT TABLE: Displays N/A in red if the figure cannot be found or is 0
     function renderCalculationBalances(rawFile, multiplier) {
       const container = document.getElementById("extractedDataView");
       if (!container || !rawFile) return;
@@ -514,9 +516,10 @@
 
       let rows = "";
       for (const [label, val] of Object.entries(fileExtractedItems)) {
-        let formatted = '<span class="text-gray-400 italic">Not Disclosed in File</span>';
+        let formatted = '<span class="text-rose-600 font-bold">N/A</span>';
         
-        if (typeof val === "number" && !isNaN(val) && val !== null) {
+        // Return red N/A if null, undefined, NaN, or 0
+        if (typeof val === "number" && !isNaN(val) && val !== 0 && val !== null) {
           if (label.includes("Shares")) {
             formatted = val.toLocaleString() + " Shares";
           } else {
@@ -624,6 +627,12 @@
           badgeEn = "High Valuation Risk (Expensive)";
           descKh = `តម្លៃភាគហ៊ុននៅលើផ្សារបច្ចុប្បន្នស្ថិតក្នុងកម្រិត <strong>ថ្លៃខ្លាំង (${metrics.evEbitda.toFixed(2)}x)</strong>។ អ្នកវិនិយោគកំពុងទិញភាគហ៊ុនក្នុងតម្លៃថ្លៃជាងក្រុមហ៊ុនទូរគមនាគមន៍ដទៃដល់ទៅ ២ ទៅ ៣ ដង។`;
           descEn = `The stock is <strong>very expensive (${metrics.evEbitda.toFixed(2)}x)</strong> relative to peer baselines (${peerEv}).`;
+        } else if (metrics.evEbitda > 9.5) {
+          riskLevel = "orange";
+          badgeKh = "ហានិភ័យមធ្យម (ថ្លៃបង្គួរ)";
+          badgeEn = "Low / Moderate Risk";
+          descKh = `អនុបាត <strong>${metrics.evEbitda.toFixed(2)}x</strong> គឺខ្ពស់ជាងមធ្យមភាគបន្តិច (${peerEv})។`;
+          descEn = `Trading at <strong>${metrics.evEbitda.toFixed(2)}x</strong> carries a slight premium over peer baselines (${peerEv}).`;
         }
 
         khmerHtml += createCard(1, "ការវាយតម្លៃថ្លៃដើមទុន (EV/EBITDA)", `${metrics.evEbitda.toFixed(2)}x`, riskLevel, badgeKh, descKh);

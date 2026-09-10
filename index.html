@@ -22,7 +22,7 @@
     </header>
 
     <!-- Stock Selection, Industry & Market Inputs -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
       <div>
         <label class="block text-xs font-semibold text-gray-700 mb-1">Company / SOE Rules</label>
         <select id="companyType" onchange="executeCalculations()" class="w-full border rounded-lg p-2 text-xs bg-white focus:ring-2 focus:ring-blue-500 font-medium">
@@ -40,10 +40,6 @@
           <option value="MANUFACTURING">Industrial & Manufacturing</option>
           <option value="CONSUMER">Consumer & Services</option>
         </select>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-700 mb-1">Gemini API Key</label>
-        <input id="apiKey" type="password" placeholder="AIzaSy..." class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500" />
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-700 mb-1">Share Price</label>
@@ -174,17 +170,11 @@
           <div id="elaborationEnglishList" class="space-y-3 text-xs"></div>
         </div>
       </div>
-
-      <details class="bg-gray-50 border rounded-lg p-3 text-xs" open>
-        <summary class="font-semibold text-gray-700 cursor-pointer select-none">
-          Active Calculation Balances (Actual Values Used in Formulas in KHR ៛)
-        </summary>
-        <div id="extractedDataView" class="mt-2 overflow-x-auto"></div>
-      </details>
     </div>
   </div>
 
   <script>
+    const EMBEDDED_API_KEY = "AQ.Ab8RN6JcpYk8NpHjupyd0NPahHWoh7ODKDNeioaPjbGK1OkAQw";
     const USD_TO_KHR = 4000;
     let globalRatios = null;
     let rawExtractedData = null;
@@ -229,12 +219,11 @@
     }
 
     async function processDocument() {
-      const apiKey = document.getElementById("apiKey").value.trim();
+      const apiKey = EMBEDDED_API_KEY;
       const fileInput = document.getElementById("fileUpload");
       const statusDiv = document.getElementById("status");
       const resultsDiv = document.getElementById("results");
 
-      if (!apiKey) { alert("Please provide your Gemini API key."); return; }
       if (!fileInput.files.length) { alert("Please select a PDF or Word file."); return; }
 
       const file = fileInput.files[0];
@@ -304,7 +293,6 @@
         }
       }
 
-      // Read UI Overrides & Selections
       const companyType = document.getElementById("companyType").value;
       const industryType = document.getElementById("industryType").value;
       const priceInput = parseFloat(document.getElementById("sharePrice").value);
@@ -339,9 +327,7 @@
 
       document.getElementById("detectedCurrencyBadge").textContent = `Report: ${docCurrency} | Calculated in KHR (1 USD = 4,000 KHR)`;
 
-      // -------------------------------------------------------------
       // 1. CSX VALUATION & CAPITALIZATION
-      // -------------------------------------------------------------
       let mktCapVal = null, fullMktCapVal = null;
       let mktCapDisplay = "N/A", fullMktCapDisplay = "N/A";
       if (priceInKHR && listedShares > 0) {
@@ -351,7 +337,6 @@
         fullMktCapDisplay = fullMktCapVal.toLocaleString() + " ៛";
       }
 
-      // SOE Equity Adjustments for CSX
       let adjustedEquity = d.total_equity || 0;
       if (companyType === "PWSA") {
         adjustedEquity -= (391100942 * 1000);
@@ -374,9 +359,7 @@
         evEbitdaDisplay = (ev / ebitda).toFixed(2) + "x";
       }
 
-      // -------------------------------------------------------------
       // 2. ROIC (Invested Capital: Equity + Liabilities - Cash)
-      // -------------------------------------------------------------
       const taxBase = (d.operating_income || 0) - (d.interest_expense || 0);
       const effTax = (taxBase > 0 && d.tax_expense) ? Math.min(Math.max(d.tax_expense / taxBase, 0), 0.35) : 0.20;
       const nopat = (d.operating_income || 0) * (1 - effTax);
@@ -385,18 +368,14 @@
       const investedCap = !isNaN(manualIC) && manualIC > 0 ? manualIC : defaultInvestedCap;
       const roic = investedCap > 0 ? ((nopat / investedCap) * 100).toFixed(2) + "%" : "N/A";
 
-      // -------------------------------------------------------------
       // 3. SOLVENCY & LEVERAGE
-      // -------------------------------------------------------------
       const totalLiab = d.total_liabilities || 0;
       const debtToEquity = (d.total_equity && d.total_equity > 0) ? (totalLiab / d.total_equity).toFixed(2) + "x" : "N/A";
       const debtToAsset = (d.total_assets && d.total_assets > 0) ? ((totalLiab / d.total_assets) * 100).toFixed(2) + "%" : "N/A";
       const intCoverage = (d.interest_expense && d.interest_expense > 0) ? (d.operating_income / d.interest_expense).toFixed(2) + "x" : "N/A";
       const aeRatio = (d.total_assets && d.total_equity && d.total_equity > 0) ? (d.total_assets / d.total_equity).toFixed(2) + "x" : "N/A";
 
-      // -------------------------------------------------------------
       // 4. PROFITABILITY & MARGINS
-      // -------------------------------------------------------------
       const avgEquity = (d.beginning_equity && d.total_equity) ? ((d.beginning_equity + d.total_equity) / 2) : d.total_equity;
       const avgAssets = (d.beginning_assets && d.total_assets) ? ((d.beginning_assets + d.total_assets) / 2) : d.total_assets;
 
@@ -406,9 +385,7 @@
       const opMargin = (d.revenue && d.operating_income) ? ((d.operating_income / d.revenue) * 100).toFixed(2) + "%" : "N/A";
       const netMargin = (d.revenue && d.net_income) ? ((d.net_income / d.revenue) * 100).toFixed(2) + "%" : "N/A";
 
-      // -------------------------------------------------------------
       // 5. EARNINGS & DIVIDENDS
-      // -------------------------------------------------------------
       const eps = (listedShares > 0 && d.net_income) ? (d.net_income / listedShares) : null;
       const epsDisplay = eps !== null ? eps.toFixed(2) + " ៛" : "N/A";
       const peRatio = (priceInKHR && eps && eps > 0) ? (priceInKHR / eps).toFixed(2) + "x" : "N/A";
@@ -425,7 +402,6 @@
         divPayoutDisplay = ((d.dividend_per_share / eps) * 100).toFixed(2) + "%";
       }
 
-      // Liquidity
       const currentRatio = (d.current_assets && d.current_liabilities) ? (d.current_assets / d.current_liabilities).toFixed(2) : "N/A";
       const quickAssets = (d.cash_and_equivalents || 0) + (d.marketable_securities || 0) + (d.receivables || 0);
       const quickRatio = (quickAssets > 0 && d.current_liabilities) ? (quickAssets / d.current_liabilities).toFixed(2) : "N/A";
@@ -468,7 +444,6 @@
       };
 
       renderRatioTables(globalRatios);
-      renderCalculationBalances(d, investedCap, ebitda, nopat);
       renderElaboration({
         industry: industryType,
         evEbitda: parseFloat(evEbitdaDisplay),
@@ -501,39 +476,6 @@
       }
     }
 
-    function renderCalculationBalances(d, investedCap, ebitda, nopat) {
-      const container = document.getElementById("extractedDataView");
-      if (!container) return;
-      const calculationItems = {
-        "Revenue (ផលរបរ)": d.revenue,
-        "Gross Profit (ចំណេញដុល)": d.gross_profit,
-        "Operating Income / EBIT (ចំណេញប្រតិបត្តិការ)": d.operating_income,
-        "Depreciation & Amortization (ចំណាយរំលស់)": d.depreciation_amortization,
-        "Calculated EBITDA": ebitda,
-        "Calculated NOPAT": nopat,
-        "Tax Expense (ចំណាយពន្ធ)": d.tax_expense,
-        "Interest Expense (ចំណាយហិរញ្ញវត្ថុ/ការប្រាក់)": d.interest_expense,
-        "Net Income (ចំណេញសុទ្ធ)": d.net_income,
-        "Cash & Cash Equivalents (សាច់ប្រាក់សមមូល)": d.cash_and_equivalents,
-        "Total Assets (ទ្រព្យសកម្មសរុប)": d.total_assets,
-        "Total Liabilities (បំណុលសរុប)": d.total_liabilities,
-        "Total Equity (មូលធនសរុប)": d.total_equity,
-        "Calculated Invested Capital (Eq + Liab - Cash)": investedCap,
-        "CSX Listed Shares Count": d.shares_outstanding
-      };
-
-      let rows = "";
-      for (const [label, val] of Object.entries(calculationItems)) {
-        const formatted = typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛" : (val || "—");
-        rows += `
-          <tr class="border-b">
-            <td class="py-1 px-3 font-medium text-xs text-gray-700">${label}</td>
-            <td class="py-1 px-3 font-mono font-semibold text-right text-gray-900">${formatted}</td>
-          </tr>`;
-      }
-      container.innerHTML = `<table class="w-full text-xs"><tbody>${rows}</tbody></table>`;
-    }
-
     function renderElaboration(metrics) {
       const khmerContainer = document.getElementById("elaborationKhmerList");
       const englishContainer = document.getElementById("elaborationEnglishList");
@@ -558,7 +500,6 @@
 
       benchmarkNote.textContent = `វិស័យ / Industry: ${industryText} | EV/EBITDA ស្តង់ដារ: ${peerEv} | បំណុលសមស្រប (D/E): ${d2eNorm}`;
 
-      // Single Card Builder for Strict Language Separation
       function createCard(orderNum, title, valueText, riskLevel, badgeText, description) {
         let cardBg = "";
         if (riskLevel === "green") {
@@ -625,8 +566,8 @@
           riskLevel = "red";
           badgeKh = "ហានិភ័យខ្ពស់ (តម្លៃថ្លៃខ្លាំង)";
           badgeEn = "High Valuation Risk (Expensive)";
-          descKh = `តម្លៃភាគហ៊ុននៅលើផ្សារបច្ចុប្បន្នស្ថិតក្នុងកម្រិត <strong>ថ្លៃខ្លាំង (${metrics.evEbitda.toFixed(2)}x)</strong>។ អ្នកវិនិយោគកំពុងទិញភាគហ៊ុនក្នុងតម្លៃថ្លៃជាងក្រុមហ៊ុនទូរគមនាគមន៍ដទៃដល់ទៅ ២ ទៅ ៣ ដង ធៀបនឹងសាច់ប្រាក់ប្រតិបត្តិការដែលក្រុមហ៊ុនរកបាន។ តម្លៃនេះនៅខ្ពស់ដោយសារតែភាគហ៊ុនស្ទើរតែទាំងអស់ (៩៨,៥%) ត្រូវបានកាន់កាប់ដោយក្រុមហ៊ុនមេ (Royal Millicom) គួបផ្សំនឹងការធានាភាគលាភ ៧% មិនមែនមកពីកំណើនសាច់ប្រាក់ពិតប្រាកដនោះទេ។`;
-          descEn = `The stock is <strong>very expensive (${metrics.evEbitda.toFixed(2)}x)</strong>. Investors are paying 2.5x to 3x higher multiples than regional peers (${peerEv}) relative to core operating cash flows. This premium is sustained by a tight float (~98.5% parent ownership) and a guaranteed 7% dividend floor rather than fundamental cash growth.`;
+          descKh = `តម្លៃភាគហ៊ុននៅលើផ្សារបច្ចុប្បន្នស្ថិតក្នុងកម្រិត <strong>ថ្លៃខ្លាំង (${metrics.evEbitda.toFixed(2)}x)</strong>។ អ្នកវិនិយោគកំពុងទិញភាគហ៊ុនក្នុងតម្លៃថ្លៃជាងក្រុមហ៊ុនទូរគមនាគមន៍ដទៃដល់ទៅ ២ ទៅ ៣ ដង ធៀបនឹងសាច់ប្រាក់ប្រតិបត្តិការដែលក្រុមហ៊ុនរកបាន។ តម្លៃនេះនៅខ្ពស់ដោយសារតែភាគហ៊ុនស្ទើរតែទាំងអស់ (៩៨,៥%) ត្រូវបានកាន់កាប់ដោយក្រុមហ៊ុនមេ (Royal Millicom) គួបផ្សំនឹងការធានាភាគលាភ ៧% មិនមែនមកពីកំណើនសាច់ប្រាក់ពិតប្រាកដនោះទេ។`[cite: 1];
+          descEn = `The stock is <strong>very expensive (${metrics.evEbitda.toFixed(2)}x)</strong>. Investors are paying 2.5x to 3x higher multiples than regional peers (${peerEv}) relative to core operating cash flows. This premium is sustained by a tight float (~98.5% parent ownership) and a guaranteed 7% dividend floor rather than fundamental cash growth.`[cite: 1];
         } else if (metrics.evEbitda > 9.5) {
           riskLevel = "orange";
           badgeKh = "ហានិភ័យមធ្យម (ថ្លៃបង្គួរ)";
@@ -651,8 +592,8 @@
           riskLevel = "red";
           badgeKh = "ហានិភ័យខ្ពស់ (ផលចំណេញទាប)";
           badgeEn = "High Efficiency Risk (Low Return)";
-          descKh = `ប្រសិទ្ធភាពទុននៅ <strong>ទាបខ្លាំង (${metrics.roic.toFixed(2)}%)</strong>។ ក្រុមហ៊ុនរកផលចំណេញសុទ្ធបានត្រឹមតែ <strong>${metrics.roic.toFixed(2)} រៀលប៉ុណ្ណោះ ពីទុនវិនិយោគរៀងរាល់ ១០០ រៀល</strong> ដែលដាក់ចូលក្នុងអាជីវកម្ម។ កម្រិតនេះទាបជាងការប្រាក់កម្ចីធនាគារ និងសញ្ញាប័ណ្ណដែលត្រូវបង់ (ប្រមាណ ៧,៧៥%)។ នេះបង្ហាញថាការចំណាយទុនយ៉ាងច្រើនលើប្រព័ន្ធ 5G និងខ្សែកាបកន្លងមក មិនទាន់បង្កើតផលចំណេញត្រឡប់មកវិញសមស្របនៅឡើយទេ។`;
-          descEn = `Capital efficiency is <strong>weak (${metrics.roic.toFixed(2)}%)</strong>. The core business generates only <strong>$${metrics.roic.toFixed(2)} of after-tax operating profit for every $100</strong> tied up in operations, which is far below its ~7.75% bond/debt borrowing cost. Heavy capital expenditures (5G deployment and fiber networks) have not yet scaled into proportional earnings.`;
+          descKh = `ប្រសិទ្ធភាពទុននៅ <strong>ទាបខ្លាំង (${metrics.roic.toFixed(2)}%)</strong>។ ក្រុមហ៊ុនរកផលចំណេញសុទ្ធបានត្រឹមតែ <strong>${metrics.roic.toFixed(2)} រៀលប៉ុណ្ណោះ ពីទុនវិនិយោគរៀងរាល់ ១០០ រៀល</strong> ដែលដាក់ចូលក្នុងអាជីវកម្ម។ កម្រិតនេះទាបជាងការប្រាក់កម្ចីធនាគារ និងសញ្ញាប័ណ្ណដែលត្រូវបង់ (ប្រមាណ ៧,៧៥%)។ នេះបង្ហាញថាការចំណាយទុនយ៉ាងច្រើនលើប្រព័ន្ធ 5G និងខ្សែកាបកន្លងមក មិនទាន់បង្កើតផលចំណេញត្រឡប់មកវិញសមស្របនៅឡើយទេ។`[cite: 1];
+          descEn = `Capital efficiency is <strong>weak (${metrics.roic.toFixed(2)}%)</strong>. The core business generates only <strong>$${metrics.roic.toFixed(2)} of after-tax operating profit for every $100</strong> tied up in operations, which is far below its ~7.75% bond/debt borrowing cost. Heavy capital expenditures (5G deployment and fiber networks) have not yet scaled into proportional earnings.`[cite: 1];
         } else if (metrics.roic < 8.0) {
           riskLevel = "orange";
           badgeKh = "ហានិភ័យមធ្យម (ផលចំណេញមធ្យម)";

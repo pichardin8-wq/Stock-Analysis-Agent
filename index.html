@@ -4,7 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSX Financial Ratio Analyzer (KHR)</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Mammoth for .docx parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 p-4 md:p-8">
@@ -19,8 +21,8 @@
       </div>
     </header>
 
-    <!-- Controls Row -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+    <!-- Stock Selection, Industry & Market Inputs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-4">
       <div>
         <label class="block text-xs font-semibold text-gray-700 mb-1">Company / SOE Rules</label>
         <select id="companyType" onchange="executeCalculations()" class="w-full border rounded-lg p-2 text-xs bg-white focus:ring-2 focus:ring-blue-500 font-medium">
@@ -38,6 +40,10 @@
           <option value="MANUFACTURING">Industrial & Manufacturing</option>
           <option value="CONSUMER">Consumer & Services</option>
         </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 mb-1">Gemini API Key</label>
+        <input id="apiKey" type="password" placeholder="AIzaSy..." class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500" />
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-700 mb-1">Share Price</label>
@@ -111,7 +117,7 @@
       Analyze Document & Calculate CSX Ratios
     </button>
 
-    <div id="status" class="mt-4 p-3 rounded-lg text-sm font-medium hidden"></div>
+    <div id="status" class="mt-4 text-sm font-medium text-blue-600 hidden"></div>
 
     <!-- Output Section -->
     <div id="results" class="mt-8 hidden">
@@ -127,7 +133,7 @@
 
       <div id="tablesContainer" class="space-y-5 mb-8"></div>
 
-      <!-- Financial Diagnostics -->
+      <!-- Financial Diagnostics: Separated Khmer First, English Second -->
       <div id="elaborationContainer" class="border border-gray-200 bg-white rounded-xl p-5 mb-8 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-gray-200 gap-2">
           <div>
@@ -136,29 +142,30 @@
             </h3>
             <p id="industryBenchmarkNote" class="text-xs text-gray-500 mt-0.5 font-medium"></p>
           </div>
+          <!-- Risk Legend -->
           <div class="flex items-center gap-2 text-[11px] font-semibold select-none">
             <span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ហានិភ័យទាប / Low
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ហានិភ័យទាប / Low Risk
             </span>
             <span class="inline-flex items-center gap-1 text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
               <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> ហានិភ័យមធ្យម / Moderate
             </span>
             <span class="inline-flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
-              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> ហានិភ័យខ្ពស់ / High
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> ហានិភ័យខ្ពស់ / High Risk
             </span>
           </div>
         </div>
 
-        <!-- Khmer Diagnostics -->
+        <!-- Section 1: Khmer Diagnostics (Displayed First) -->
         <div class="mb-6">
           <div class="flex items-center gap-2 mb-3">
             <span class="text-base">🇰🇭</span>
-            <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider">ការវាយតម្លៃលម្អិតជាភាសាខ្មែរ</h4>
+            <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider">ការវាយតម្លៃលម្អិតជាភាសាខ្មែរ (Khmer Diagnostics)</h4>
           </div>
           <div id="elaborationKhmerList" class="space-y-3 text-xs"></div>
         </div>
 
-        <!-- English Diagnostics -->
+        <!-- Section 2: English Diagnostics (Displayed Second) -->
         <div class="pt-6 border-t border-gray-200">
           <div class="flex items-center gap-2 mb-3">
             <span class="text-base">🇬🇧</span>
@@ -167,15 +174,17 @@
           <div id="elaborationEnglishList" class="space-y-3 text-xs"></div>
         </div>
       </div>
+
+      <details class="bg-gray-50 border rounded-lg p-3 text-xs" open>
+        <summary class="font-semibold text-gray-700 cursor-pointer select-none">
+          Active Calculation Balances (Actual Values Used in Formulas in KHR ៛)
+        </summary>
+        <div id="extractedDataView" class="mt-2 overflow-x-auto"></div>
+      </details>
     </div>
   </div>
 
   <script>
-    // -------------------------------------------------------------
-    // REPLACE THIS WITH YOUR VALID KEY FROM aistudio.google.com (Must start with AIzaSy)
-    // -------------------------------------------------------------
-    const HARDCODED_API_KEY = "PASTE_YOUR_AIzaSy_KEY_HERE";
-
     const USD_TO_KHR = 4000;
     let globalRatios = null;
     let rawExtractedData = null;
@@ -197,8 +206,8 @@
         inventory: { type: "NUMBER" },
         current_assets: { type: "NUMBER" },
         current_liabilities: { type: "NUMBER" },
-        interest_bearing_debt: { type: "NUMBER" },
-        total_liabilities: { type: "NUMBER" },
+        interest_bearing_debt: { type: "NUMBER", description: "Bonds, bank borrowings, loans, lease liabilities" },
+        total_liabilities: { type: "NUMBER", description: "Total liabilities on the balance sheet" },
         total_assets: { type: "NUMBER" },
         beginning_assets: { type: "NUMBER" },
         total_equity: { type: "NUMBER" },
@@ -220,32 +229,25 @@
     }
 
     async function processDocument() {
+      const apiKey = document.getElementById("apiKey").value.trim();
       const fileInput = document.getElementById("fileUpload");
       const statusDiv = document.getElementById("status");
       const resultsDiv = document.getElementById("results");
 
-      if (!HARDCODED_API_KEY || !HARDCODED_API_KEY.startsWith("AIzaSy")) {
-        statusDiv.className = "mt-4 p-3 rounded-lg text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 block";
-        statusDiv.innerHTML = "⚠️ <strong>Invalid API Key:</strong> Google Gemini API keys must begin with <code>AIzaSy...</code>. Please get a free key from <a href='https://aistudio.google.com/' target='_blank' class='underline'>Google AI Studio</a> and replace <code>HARDCODED_API_KEY</code> in the script.";
-        return;
-      }
-
-      if (!fileInput.files.length) { 
-        alert("Please select a PDF or Word file."); 
-        return; 
-      }
+      if (!apiKey) { alert("Please provide your Gemini API key."); return; }
+      if (!fileInput.files.length) { alert("Please select a PDF or Word file."); return; }
 
       const file = fileInput.files[0];
-      statusDiv.className = "mt-4 p-3 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 block";
-      statusDiv.textContent = "Reading document...";
+      statusDiv.className = "mt-4 text-sm font-medium text-blue-600 block";
+      statusDiv.textContent = "Reading and uploading document...";
       resultsDiv.classList.add("hidden");
 
       try {
         let requestContents = [];
-        const promptInstruction = "Extract financial statement line items for the latest fiscal year. If prior year assets and equity are reported, extract them as beginning_assets and beginning_equity. Differentiate interest_bearing_debt from total_liabilities. Normalize all numbers to full units (multiply millions by 1,000,000). State if figures are reported in USD or KHR.";
+        const promptInstruction = "Extract the financial statement line items for the latest fiscal year. If prior year assets and equity are reported, extract them as beginning_assets and beginning_equity. Differentiate interest_bearing_debt (bonds/loans) from total_liabilities. Normalize all numbers to full units (e.g., multiply millions by 1,000,000). State if figures are reported in USD or KHR.";
 
         if (file.name.endsWith(".docx")) {
-          statusDiv.textContent = "Extracting Word text with Mammoth...";
+          statusDiv.textContent = "Extracting Word text...";
           const arrayBuffer = await file.arrayBuffer();
           const parsed = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
           requestContents = [{ parts: [{ text: promptInstruction }, { text: parsed.value }] }];
@@ -255,8 +257,8 @@
           requestContents = [{ parts: [{ inline_data: { mime_type: "application/pdf", data: base64Data } }, { text: promptInstruction }] }];
         }
 
-        statusDiv.textContent = "Querying Gemini API (gemini-1.5-flash)...";
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${HARDCODED_API_KEY}`, {
+        statusDiv.textContent = "Processing line items with Gemini 3.6 Flash...";
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -270,7 +272,7 @@
 
         if (!response.ok) {
           const err = await response.json();
-          throw new Error(err.error?.message || `API error (${response.status})`);
+          throw new Error(err.error?.message || "Document extraction failed.");
         }
 
         const resData = await response.json();
@@ -281,8 +283,8 @@
         statusDiv.classList.add("hidden");
         resultsDiv.classList.remove("hidden");
       } catch (err) {
-        statusDiv.className = "mt-4 p-3 rounded-lg text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 block";
-        statusDiv.innerHTML = "<strong>Extraction Error:</strong> " + err.message;
+        statusDiv.textContent = "Error: " + err.message;
+        statusDiv.className = "mt-4 text-sm font-medium text-red-600 block";
       }
     }
 
@@ -302,6 +304,7 @@
         }
       }
 
+      // Read UI Overrides & Selections
       const companyType = document.getElementById("companyType").value;
       const industryType = document.getElementById("industryType").value;
       const priceInput = parseFloat(document.getElementById("sharePrice").value);
@@ -334,9 +337,11 @@
       const inputNonListed = parseFloat(document.getElementById("nonListedShares").value) || 0;
       const totalShares = listedShares + inputNonListed;
 
-      document.getElementById("detectedCurrencyBadge").textContent = `Report: ${docCurrency} | Converted at 1 USD = 4,000 KHR`;
+      document.getElementById("detectedCurrencyBadge").textContent = `Report: ${docCurrency} | Calculated in KHR (1 USD = 4,000 KHR)`;
 
-      // 1. Valuation
+      // -------------------------------------------------------------
+      // 1. CSX VALUATION & CAPITALIZATION
+      // -------------------------------------------------------------
       let mktCapVal = null, fullMktCapVal = null;
       let mktCapDisplay = "N/A", fullMktCapDisplay = "N/A";
       if (priceInKHR && listedShares > 0) {
@@ -346,14 +351,20 @@
         fullMktCapDisplay = fullMktCapVal.toLocaleString() + " ៛";
       }
 
+      // SOE Equity Adjustments for CSX
       let adjustedEquity = d.total_equity || 0;
-      if (companyType === "PWSA") adjustedEquity -= (391100942 * 1000);
-      else if (companyType === "PPAP") adjustedEquity -= (93769120 * 4000);
-      else if (companyType === "PAS") adjustedEquity -= (364530861 * 1000);
+      if (companyType === "PWSA") {
+        adjustedEquity -= (391100942 * 1000);
+      } else if (companyType === "PPAP") {
+        adjustedEquity -= (93769120 * 4000);
+      } else if (companyType === "PAS") {
+        adjustedEquity -= (364530861 * 1000);
+      }
 
       const bvps = (listedShares > 0 && adjustedEquity > 0) ? (adjustedEquity / listedShares) : null;
       const pbRatio = (priceInKHR && bvps && bvps > 0) ? (priceInKHR / bvps).toFixed(2) : "N/A";
 
+      // EV / EBITDA
       const ebitda = (d.operating_income || 0) + (d.depreciation_amortization || 0);
       let evDisplay = "N/A", evEbitdaDisplay = "N/A";
       if (fullMktCapVal && ebitda > 0) {
@@ -363,31 +374,41 @@
         evEbitdaDisplay = (ev / ebitda).toFixed(2) + "x";
       }
 
-      // 2. ROIC
+      // -------------------------------------------------------------
+      // 2. ROIC (Invested Capital: Equity + Liabilities - Cash)
+      // -------------------------------------------------------------
       const taxBase = (d.operating_income || 0) - (d.interest_expense || 0);
       const effTax = (taxBase > 0 && d.tax_expense) ? Math.min(Math.max(d.tax_expense / taxBase, 0), 0.35) : 0.20;
       const nopat = (d.operating_income || 0) * (1 - effTax);
+      
       const defaultInvestedCap = (d.total_equity || 0) + (d.total_liabilities || 0) - (d.cash_and_equivalents || 0);
       const investedCap = !isNaN(manualIC) && manualIC > 0 ? manualIC : defaultInvestedCap;
       const roic = investedCap > 0 ? ((nopat / investedCap) * 100).toFixed(2) + "%" : "N/A";
 
-      // 3. Solvency
+      // -------------------------------------------------------------
+      // 3. SOLVENCY & LEVERAGE
+      // -------------------------------------------------------------
       const totalLiab = d.total_liabilities || 0;
       const debtToEquity = (d.total_equity && d.total_equity > 0) ? (totalLiab / d.total_equity).toFixed(2) + "x" : "N/A";
       const debtToAsset = (d.total_assets && d.total_assets > 0) ? ((totalLiab / d.total_assets) * 100).toFixed(2) + "%" : "N/A";
       const intCoverage = (d.interest_expense && d.interest_expense > 0) ? (d.operating_income / d.interest_expense).toFixed(2) + "x" : "N/A";
       const aeRatio = (d.total_assets && d.total_equity && d.total_equity > 0) ? (d.total_assets / d.total_equity).toFixed(2) + "x" : "N/A";
 
-      // 4. Margins
+      // -------------------------------------------------------------
+      // 4. PROFITABILITY & MARGINS
+      // -------------------------------------------------------------
       const avgEquity = (d.beginning_equity && d.total_equity) ? ((d.beginning_equity + d.total_equity) / 2) : d.total_equity;
       const avgAssets = (d.beginning_assets && d.total_assets) ? ((d.beginning_assets + d.total_assets) / 2) : d.total_assets;
+
       const roe = (avgEquity && d.net_income) ? ((d.net_income / avgEquity) * 100).toFixed(2) + "%" : "N/A";
       const roa = (avgAssets && d.net_income) ? ((d.net_income / avgAssets) * 100).toFixed(2) + "%" : "N/A";
       const grossMargin = (d.revenue && d.gross_profit) ? ((d.gross_profit / d.revenue) * 100).toFixed(2) + "%" : "N/A";
       const opMargin = (d.revenue && d.operating_income) ? ((d.operating_income / d.revenue) * 100).toFixed(2) + "%" : "N/A";
       const netMargin = (d.revenue && d.net_income) ? ((d.net_income / d.revenue) * 100).toFixed(2) + "%" : "N/A";
 
-      // 5. Earnings & Dividends
+      // -------------------------------------------------------------
+      // 5. EARNINGS & DIVIDENDS
+      // -------------------------------------------------------------
       const eps = (listedShares > 0 && d.net_income) ? (d.net_income / listedShares) : null;
       const epsDisplay = eps !== null ? eps.toFixed(2) + " ៛" : "N/A";
       const peRatio = (priceInKHR && eps && eps > 0) ? (priceInKHR / eps).toFixed(2) + "x" : "N/A";
@@ -404,6 +425,7 @@
         divPayoutDisplay = ((d.dividend_per_share / eps) * 100).toFixed(2) + "%";
       }
 
+      // Liquidity
       const currentRatio = (d.current_assets && d.current_liabilities) ? (d.current_assets / d.current_liabilities).toFixed(2) : "N/A";
       const quickAssets = (d.cash_and_equivalents || 0) + (d.marketable_securities || 0) + (d.receivables || 0);
       const quickRatio = (quickAssets > 0 && d.current_liabilities) ? (quickAssets / d.current_liabilities).toFixed(2) : "N/A";
@@ -446,13 +468,15 @@
       };
 
       renderRatioTables(globalRatios);
+      renderCalculationBalances(d, investedCap, ebitda, nopat);
       renderElaboration({
         industry: industryType,
         evEbitda: parseFloat(evEbitdaDisplay),
         roic: parseFloat(roic),
         debtToEquity: parseFloat(debtToEquity),
         intCoverage: parseFloat(intCoverage),
-        currentRatio: parseFloat(currentRatio)
+        currentRatio: parseFloat(currentRatio),
+        divYield: parseFloat(divYieldDisplay)
       });
     }
 
@@ -475,6 +499,39 @@
             <table class="w-full text-sm"><tbody>${rows}</tbody></table>
           </div>`;
       }
+    }
+
+    function renderCalculationBalances(d, investedCap, ebitda, nopat) {
+      const container = document.getElementById("extractedDataView");
+      if (!container) return;
+      const calculationItems = {
+        "Revenue (ផលរបរ)": d.revenue,
+        "Gross Profit (ចំណេញដុល)": d.gross_profit,
+        "Operating Income / EBIT (ចំណេញប្រតិបត្តិការ)": d.operating_income,
+        "Depreciation & Amortization (ចំណាយរំលស់)": d.depreciation_amortization,
+        "Calculated EBITDA": ebitda,
+        "Calculated NOPAT": nopat,
+        "Tax Expense (ចំណាយពន្ធ)": d.tax_expense,
+        "Interest Expense (ចំណាយហិរញ្ញវត្ថុ/ការប្រាក់)": d.interest_expense,
+        "Net Income (ចំណេញសុទ្ធ)": d.net_income,
+        "Cash & Cash Equivalents (សាច់ប្រាក់សមមូល)": d.cash_and_equivalents,
+        "Total Assets (ទ្រព្យសកម្មសរុប)": d.total_assets,
+        "Total Liabilities (បំណុលសរុប)": d.total_liabilities,
+        "Total Equity (មូលធនសរុប)": d.total_equity,
+        "Calculated Invested Capital (Eq + Liab - Cash)": investedCap,
+        "CSX Listed Shares Count": d.shares_outstanding
+      };
+
+      let rows = "";
+      for (const [label, val] of Object.entries(calculationItems)) {
+        const formatted = typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " ៛" : (val || "—");
+        rows += `
+          <tr class="border-b">
+            <td class="py-1 px-3 font-medium text-xs text-gray-700">${label}</td>
+            <td class="py-1 px-3 font-mono font-semibold text-right text-gray-900">${formatted}</td>
+          </tr>`;
+      }
+      container.innerHTML = `<table class="w-full text-xs"><tbody>${rows}</tbody></table>`;
     }
 
     function renderElaboration(metrics) {
@@ -501,6 +558,7 @@
 
       benchmarkNote.textContent = `វិស័យ / Industry: ${industryText} | EV/EBITDA ស្តង់ដារ: ${peerEv} | បំណុលសមស្រប (D/E): ${d2eNorm}`;
 
+      // Single Card Builder for Strict Language Separation
       function createCard(orderNum, title, valueText, riskLevel, badgeText, description) {
         let cardBg = "";
         if (riskLevel === "green") {
@@ -567,8 +625,8 @@
           riskLevel = "red";
           badgeKh = "ហានិភ័យខ្ពស់ (តម្លៃថ្លៃខ្លាំង)";
           badgeEn = "High Valuation Risk (Expensive)";
-          descKh = `តម្លៃភាគហ៊ុននៅលើផ្សារបច្ចុប្បន្នស្ថិតក្នុងកម្រិត <strong>ថ្លៃខ្លាំង (${metrics.evEbitda.toFixed(2)}x)</strong>។ អ្នកវិនិយោគកំពុងទិញភាគហ៊ុនក្នុងតម្លៃថ្លៃជាងក្រុមហ៊ុនទូរគមនាគមន៍ដទៃដល់ទៅ ២ ទៅ ៣ ដង ធៀបនឹងសាច់ប្រាក់ប្រតិបត្តិការដែលក្រុមហ៊ុនរកបាន។ តម្លៃនេះនៅខ្ពស់ដោយសារតែភាគហ៊ុនស្ទើរតែទាំងអស់ (៩៨,៥%) ត្រូវបានកាន់កាប់ដោយក្រុមហ៊ុនមេ (Royal Millicom) គួបផ្សំនឹងការធានាភាគលាភ ៧% មិនមែនមកពីកំណើនសាច់ប្រាក់ពិតប្រាកដនោះទេ។`[cite: 1];
-          descEn = `The stock is <strong>very expensive (${metrics.evEbitda.toFixed(2)}x)</strong>. Investors are paying 2.5x to 3x higher multiples than regional peers (${peerEv}) relative to core operating cash flows. This premium is sustained by a tight float (~98.5% parent ownership) and a guaranteed 7% dividend floor rather than fundamental cash growth.`[cite: 1];
+          descKh = `តម្លៃភាគហ៊ុននៅលើផ្សារបច្ចុប្បន្នស្ថិតក្នុងកម្រិត <strong>ថ្លៃខ្លាំង (${metrics.evEbitda.toFixed(2)}x)</strong>។ អ្នកវិនិយោគកំពុងទិញភាគហ៊ុនក្នុងតម្លៃថ្លៃជាងក្រុមហ៊ុនទូរគមនាគមន៍ដទៃដល់ទៅ ២ ទៅ ៣ ដង ធៀបនឹងសាច់ប្រាក់ប្រតិបត្តិការដែលក្រុមហ៊ុនរកបាន។ តម្លៃនេះនៅខ្ពស់ដោយសារតែភាគហ៊ុនស្ទើរតែទាំងអស់ (៩៨,៥%) ត្រូវបានកាន់កាប់ដោយក្រុមហ៊ុនមេ (Royal Millicom) គួបផ្សំនឹងការធានាភាគលាភ ៧% មិនមែនមកពីកំណើនសាច់ប្រាក់ពិតប្រាកដនោះទេ។`;
+          descEn = `The stock is <strong>very expensive (${metrics.evEbitda.toFixed(2)}x)</strong>. Investors are paying 2.5x to 3x higher multiples than regional peers (${peerEv}) relative to core operating cash flows. This premium is sustained by a tight float (~98.5% parent ownership) and a guaranteed 7% dividend floor rather than fundamental cash growth.`;
         } else if (metrics.evEbitda > 9.5) {
           riskLevel = "orange";
           badgeKh = "ហានិភ័យមធ្យម (ថ្លៃបង្គួរ)";
@@ -593,8 +651,8 @@
           riskLevel = "red";
           badgeKh = "ហានិភ័យខ្ពស់ (ផលចំណេញទាប)";
           badgeEn = "High Efficiency Risk (Low Return)";
-          descKh = `ប្រសិទ្ធភាពទុននៅ <strong>ទាបខ្លាំង (${metrics.roic.toFixed(2)}%)</strong>។ ក្រុមហ៊ុនរកផលចំណេញសុទ្ធបានត្រឹមតែ <strong>${metrics.roic.toFixed(2)} រៀលប៉ុណ្ណោះ ពីទុនវិនិយោគរៀងរាល់ ១០០ រៀល</strong> ដែលដាក់ចូលក្នុងអាជីវកម្ម។ កម្រិតនេះទាបជាងការប្រាក់កម្ចីធនាគារ និងសញ្ញាប័ណ្ណដែលត្រូវបង់ (ប្រមាណ ៧,៧៥%)។ នេះបង្ហាញថាការចំណាយទុនយ៉ាងច្រើនលើប្រព័ន្ធ 5G និងខ្សែកាបកន្លងមក មិនទាន់បង្កើតផលចំណេញត្រឡប់មកវិញសមស្របនៅឡើយទេ។`[cite: 1];
-          descEn = `Capital efficiency is <strong>weak (${metrics.roic.toFixed(2)}%)</strong>. The core business generates only <strong>$${metrics.roic.toFixed(2)} of after-tax operating profit for every $100</strong> tied up in operations, which is far below its ~7.75% bond/debt borrowing cost. Heavy capital expenditures (5G deployment and fiber networks) have not yet scaled into proportional earnings.`[cite: 1];
+          descKh = `ប្រសិទ្ធភាពទុននៅ <strong>ទាបខ្លាំង (${metrics.roic.toFixed(2)}%)</strong>។ ក្រុមហ៊ុនរកផលចំណេញសុទ្ធបានត្រឹមតែ <strong>${metrics.roic.toFixed(2)} រៀលប៉ុណ្ណោះ ពីទុនវិនិយោគរៀងរាល់ ១០០ រៀល</strong> ដែលដាក់ចូលក្នុងអាជីវកម្ម។ កម្រិតនេះទាបជាងការប្រាក់កម្ចីធនាគារ និងសញ្ញាប័ណ្ណដែលត្រូវបង់ (ប្រមាណ ៧,៧៥%)។ នេះបង្ហាញថាការចំណាយទុនយ៉ាងច្រើនលើប្រព័ន្ធ 5G និងខ្សែកាបកន្លងមក មិនទាន់បង្កើតផលចំណេញត្រឡប់មកវិញសមស្របនៅឡើយទេ។`;
+          descEn = `Capital efficiency is <strong>weak (${metrics.roic.toFixed(2)}%)</strong>. The core business generates only <strong>$${metrics.roic.toFixed(2)} of after-tax operating profit for every $100</strong> tied up in operations, which is far below its ~7.75% bond/debt borrowing cost. Heavy capital expenditures (5G deployment and fiber networks) have not yet scaled into proportional earnings.`;
         } else if (metrics.roic < 8.0) {
           riskLevel = "orange";
           badgeKh = "ហានិភ័យមធ្យម (ផលចំណេញមធ្យម)";
